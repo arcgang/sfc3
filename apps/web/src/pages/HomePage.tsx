@@ -158,5 +158,6 @@ export function HomePage() {
         </div>
       </footer>
     </div>
+    </>
   );
 }

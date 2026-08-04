@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.log
+*.db
 
 # Never commit real secrets. `.env.example` is the checked-in template (see
 # `env-example-complete` in the orchestrator standards catalog).
