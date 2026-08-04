@@ -28,7 +28,8 @@ const requireAuth = authMiddleware(config.jwtSecret);
 
 app.get("/api/v1/me", requireAuth, (_req, res) => {
   res.json({ user: res.locals["user"] });
-=======
+});
+
 const echoSchema = z.object({
   message: z.string().min(1),
 });
