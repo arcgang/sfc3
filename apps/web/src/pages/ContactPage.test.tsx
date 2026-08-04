@@ -11,11 +11,11 @@ test("ContactPage renders a level-1 heading with text 'Contact Us'", () => {
   screen.getByRole("heading", { name: /contact us/i, level: 1 });
 });
 
-test("ContactPage renders placeholder copy", () => {
+test("ContactPage renders paragraph text 'Get in touch with us. We\\'d love to hear from you.'", () => {
   render(
     <MemoryRouter>
       <ContactPage />
     </MemoryRouter>,
   );
-  screen.getByText(/get in touch/i);
+  screen.getByText("Get in touch with us. We’d love to hear from you.");
 });
