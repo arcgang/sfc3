@@ -76,8 +76,7 @@ export function HomePage() {
 
       <main>
         <section aria-labelledby="hero-heading">
-          <h1 id="hero-heading">WellnessHub</h1>
-          <p>One place for your complete wellness picture.</p>
+          <h1 id="hero-heading">One place for your complete wellness picture.</h1>
           <p>
             Connect your smartwatch and smart scale, see your health trends in
             one dashboard, and get simple guidance you can act on every day.
