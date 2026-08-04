@@ -1,21 +1,27 @@
-import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import express from "express";
 import { health } from "./health.js";
+import { buildConfig } from "./config.js";
+import { correlationIdMiddleware } from "./middleware/correlationId.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
 
-const port = Number(process.env.PORT ?? 3000);
+const config = buildConfig(process.env as Record<string, string | undefined>);
 
 const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "db", "migrations");
 
 migrate(migrationsDir);
+const app = express();
 
-createServer((req, res) => {
-  if (req.url === "/health") {
-    res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(health()));
-    return;
-  }
-  res.statusCode = 404;
-  res.end("not found");
-}).listen(port, () => console.log(`service listening on :${port}`));
+app.use(correlationIdMiddleware);
+
+app.get("/health", (_req, res) => {
+  res.json(health());
+});
+
+app.use(errorHandler);
+
+app.listen(config.port, () => {
+  console.log(`service listening on :${config.port}`);
+});
