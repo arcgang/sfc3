@@ -4,6 +4,7 @@ import { health } from "./health.js";
 import { buildConfig } from "./config.js";
 import { validateBody } from "./middleware/validate.js";
 import { correlationIdMiddleware } from "./middleware/correlationId.js";
+import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
@@ -17,6 +18,11 @@ app.get("/health", (_req, res) => {
   res.json(health());
 });
 
+const requireAuth = authMiddleware(config.jwtSecret);
+
+app.get("/api/v1/me", requireAuth, (_req, res) => {
+  res.json({ user: res.locals["user"] });
+=======
 const echoSchema = z.object({
   message: z.string().min(1),
 });
