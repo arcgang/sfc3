@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
 import express, { type Request, type Response } from "express";
 import { z } from "zod";
 import { health } from "./health.js";
@@ -6,9 +8,13 @@ import { validateBody } from "./middleware/validate.js";
 import { correlationIdMiddleware } from "./middleware/correlationId.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { migrate } from "./db/migrate.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
+const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "db", "migrations");
+
+migrate(migrationsDir);
 const app = express();
 
 app.use(express.json());
