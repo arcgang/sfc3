@@ -15,7 +15,10 @@ function renderWithRouter(initialPath = "/") {
 test("/ renders the homepage (not the placeholder shell)", () => {
   renderWithRouter("/");
   expect(
-    screen.getByRole("heading", { name: "WellnessHub", level: 1 }),
+    screen.getByRole("heading", {
+      name: /One place for your complete wellness picture/i,
+      level: 1,
+    }),
   ).toBeTruthy();
 });
 
@@ -43,10 +46,13 @@ test("homepage renders Get Started Free CTA link", () => {
   expect(screen.getByRole("link", { name: "Get Started Free" })).toBeTruthy();
 });
 
-test("homepage renders primary headline 'WellnessHub'", () => {
+test("homepage renders primary headline", () => {
   renderWithRouter("/");
   expect(
-    screen.getByRole("heading", { name: "WellnessHub", level: 1 }),
+    screen.getByRole("heading", {
+      name: /One place for your complete wellness picture/i,
+      level: 1,
+    }),
   ).toBeTruthy();
 });
 
