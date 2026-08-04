@@ -14,154 +14,132 @@ function renderWithRouter(initialPath = "/") {
 
 test("/ renders the homepage (not the placeholder shell)", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByRole("heading", {
-      name: /One place for your complete wellness picture/i,
-      level: 1,
-    }),
-  ).toBeTruthy();
+  screen.getByRole("heading", {
+    name: /One place for your complete wellness picture/i,
+    level: 1,
+  });
 });
 
 test("/privacy renders the PrivacyPolicy stub", () => {
   renderWithRouter("/privacy");
-  expect(
-    screen.getByRole("heading", { name: "Privacy Policy", level: 1 }),
-  ).toBeTruthy();
+  screen.getByRole("heading", { name: "Privacy Policy", level: 1 });
 });
 
 test("unknown route renders the placeholder catch-all", () => {
   renderWithRouter("/nonexistent-route");
-  expect(screen.getByRole("heading", { name: "Web" })).toBeTruthy();
+  screen.getByRole("heading", { name: "Web" });
 });
 
 // ── Homepage structure ───────────────────────────────────────────────────────
 
 test("homepage renders Log In link in header", () => {
   renderWithRouter("/");
-  expect(screen.getByRole("link", { name: "Log In" })).toBeTruthy();
+  screen.getByRole("link", { name: "Log In" });
 });
 
 test("homepage renders Get Started Free CTA link", () => {
   renderWithRouter("/");
-  expect(screen.getByRole("link", { name: "Get Started Free" })).toBeTruthy();
+  screen.getByRole("link", { name: "Get Started Free" });
 });
 
 test("homepage renders primary headline", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByRole("heading", {
-      name: /One place for your complete wellness picture/i,
-      level: 1,
-    }),
-  ).toBeTruthy();
+  screen.getByRole("heading", {
+    name: /One place for your complete wellness picture/i,
+    level: 1,
+  });
 });
 
-test("homepage renders hero tagline text", () => {
+test("homepage renders primary headline text", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByText(/One place for your complete wellness picture/),
-  ).toBeTruthy();
+  screen.getByText(/One place for your complete wellness picture/);
 });
 
 // ── Four health domain cards ─────────────────────────────────────────────────
 
 test("homepage renders Activity health domain card", () => {
   renderWithRouter("/");
-  expect(screen.getByRole("heading", { name: "Activity" })).toBeTruthy();
+  screen.getByRole("heading", { name: "Activity" });
 });
 
 test("homepage renders Sleep health domain card", () => {
   renderWithRouter("/");
-  expect(screen.getByRole("heading", { name: "Sleep" })).toBeTruthy();
+  screen.getByRole("heading", { name: "Sleep" });
 });
 
 test("homepage renders Vital Metrics health domain card", () => {
   renderWithRouter("/");
-  expect(screen.getByRole("heading", { name: "Vital Metrics" })).toBeTruthy();
+  screen.getByRole("heading", { name: "Vital Metrics" });
 });
 
 test("homepage renders Body Composition health domain card", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByRole("heading", { name: "Body Composition" }),
-  ).toBeTruthy();
+  screen.getByRole("heading", { name: "Body Composition" });
 });
 
 // ── Statistics strip ─────────────────────────────────────────────────────────
 
 test("homepage statistics strip shows '4' core health domains metric", () => {
   renderWithRouter("/");
-  expect(screen.getByText("4")).toBeTruthy();
-  expect(screen.getByText("Core health domains monitored")).toBeTruthy();
+  screen.getByText("4");
+  screen.getByText("Core health domains monitored");
 });
 
 test("homepage statistics strip shows '1' unified dashboard metric", () => {
   renderWithRouter("/");
-  expect(screen.getByText("1")).toBeTruthy();
-  expect(
-    screen.getByText("Unified dashboard replacing multiple apps"),
-  ).toBeTruthy();
+  screen.getByText("1");
+  screen.getByText("Unified dashboard replacing multiple apps");
 });
 
 test("homepage statistics strip shows 'Daily' synchronization metric", () => {
   renderWithRouter("/");
-  expect(screen.getByText("Daily")).toBeTruthy();
-  expect(
-    screen.getByText("Near-daily synchronization visibility"),
-  ).toBeTruthy();
+  screen.getByText("Daily");
+  screen.getByText("Near-daily synchronization visibility");
 });
 
 test("homepage statistics strip shows '100%' privacy metric", () => {
   renderWithRouter("/");
-  expect(screen.getByText("100%")).toBeTruthy();
-  expect(screen.getByText("Privacy-first handling of your data")).toBeTruthy();
+  screen.getByText("100%");
+  screen.getByText("Privacy-first handling of your data");
 });
 
 // ── Trust section ────────────────────────────────────────────────────────────
 
 test("homepage trust section renders 'You Own Your Data' card", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByRole("heading", { name: "You Own Your Data" }),
-  ).toBeTruthy();
+  screen.getByRole("heading", { name: "You Own Your Data" });
 });
 
 test("homepage trust section renders 'Encrypted & Secure' card", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByRole("heading", { name: "Encrypted & Secure" }),
-  ).toBeTruthy();
+  screen.getByRole("heading", { name: "Encrypted & Secure" });
 });
 
 test("homepage trust section renders 'Never Sold' card", () => {
   renderWithRouter("/");
-  expect(screen.getByRole("heading", { name: "Never Sold" })).toBeTruthy();
+  screen.getByRole("heading", { name: "Never Sold" });
 });
 
 test("homepage trust section states data is never sold to third parties", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByText(/never sell your.*health.*data.*third parties/i),
-  ).toBeTruthy();
+  screen.getByText(/never sell your.*health.*data.*third parties/i);
 });
 
 test("homepage trust section states data is encrypted at rest and in transit", () => {
   renderWithRouter("/");
-  expect(screen.getByText(/encrypted at rest and in transit/i)).toBeTruthy();
+  screen.getByText(/encrypted at rest and in transit/i);
 });
 
 // ── Footer ───────────────────────────────────────────────────────────────────
 
 test("homepage footer contains Privacy Policy link", () => {
   renderWithRouter("/");
-  expect(screen.getByRole("link", { name: "Privacy Policy" })).toBeTruthy();
+  screen.getByRole("link", { name: "Privacy Policy" });
 });
 
 test("homepage footer contains Terms of Service link", () => {
   renderWithRouter("/");
-  expect(
-    screen.getByRole("link", { name: "Terms of Service" }),
-  ).toBeTruthy();
+  screen.getByRole("link", { name: "Terms of Service" });
 });
 
 test("Privacy Policy footer link points to /privacy route", () => {

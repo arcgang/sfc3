@@ -99,7 +99,8 @@ export function HomePage() {
           </ul>
         </section>
 
-        <section aria-label="Statistics">
+        <section aria-labelledby="stats-heading">
+          <h2 id="stats-heading" className="sr-only">Statistics</h2>
           <ul>
             {STATS.map((stat) => (
               <li key={stat.label}>
