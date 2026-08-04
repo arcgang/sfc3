@@ -81,7 +81,7 @@ export function HomePage() {
             Connect your smartwatch and smart scale, see your health trends in
             one dashboard, and get simple guidance you can act on every day.
           </p>
-          <Link to="/signup">Get Started Free</Link>
+          <Link to="/register">Get Started Free</Link>
           <Link to="/about">Learn More</Link>
         </section>
 

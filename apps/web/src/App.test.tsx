@@ -37,9 +37,28 @@ test("homepage renders Log In link in header", () => {
   screen.getByRole("link", { name: "Log In" });
 });
 
+test("homepage Log In link points to /login", () => {
+  renderWithRouter("/");
+  const link = screen.getByRole("link", { name: "Log In" });
+  expect(link.getAttribute("href")).toBe("/login");
+});
+
 test("homepage renders Get Started Free CTA link", () => {
   renderWithRouter("/");
   screen.getByRole("link", { name: "Get Started Free" });
+});
+
+test("homepage Get Started Free CTA link points to /register", () => {
+  renderWithRouter("/");
+  const link = screen.getByRole("link", { name: "Get Started Free" });
+  expect(link.getAttribute("href")).toBe("/register");
+});
+
+test("homepage supporting copy matches spec", () => {
+  renderWithRouter("/");
+  screen.getByText(
+    /Connect your smartwatch and smart scale, see your health trends in one dashboard, and get simple guidance you can act on every day\./i,
+  );
 });
 
 test("homepage renders primary headline", () => {
