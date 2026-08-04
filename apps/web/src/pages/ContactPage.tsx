@@ -3,7 +3,7 @@ export function ContactPage() {
   return (
     <main style={{ color: "#111111", backgroundColor: "#ffffff" }}>
       <h1>Contact Us</h1>
-      <p>Get in touch with us. We&apos;d love to hear from you.</p>
+      <p>Get in touch with us. We&#x2019;d love to hear from you.</p>
     </main>
   );
 }
