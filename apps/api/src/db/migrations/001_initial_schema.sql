@@ -3,8 +3,6 @@
 -- foreign keys, unique constraints, and indexes.
 -- Uses IF NOT EXISTS throughout so re-running is safe.
 
-PRAGMA foreign_keys = ON;
-
 -- 1. users
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT        NOT NULL PRIMARY KEY,
@@ -81,6 +79,9 @@ CREATE TABLE IF NOT EXISTS health_records (
 CREATE INDEX IF NOT EXISTS idx_health_records_user_domain_time
   ON health_records(user_id, metric_domain, recorded_at);
 
+CREATE INDEX IF NOT EXISTS idx_health_records_device_connection
+  ON health_records(device_connection_id);
+
 -- 6. goals  (user_id → users.id)
 CREATE TABLE IF NOT EXISTS goals (
   id         TEXT    NOT NULL PRIMARY KEY,
@@ -118,6 +119,12 @@ CREATE TABLE IF NOT EXISTS alerts (
 CREATE INDEX IF NOT EXISTS idx_alerts_user_priority_ack
   ON alerts(user_id, priority, acknowledged_at);
 
+CREATE INDEX IF NOT EXISTS idx_alerts_goal
+  ON alerts(goal_id);
+
+CREATE INDEX IF NOT EXISTS idx_alerts_health_record
+  ON alerts(health_record_id);
+
 -- 8. insights  (user_id → users.id, goal_id → goals.id nullable)
 CREATE TABLE IF NOT EXISTS insights (
   id             TEXT NOT NULL PRIMARY KEY,
@@ -134,6 +141,9 @@ CREATE TABLE IF NOT EXISTS insights (
 
 CREATE INDEX IF NOT EXISTS idx_insights_user_created
   ON insights(user_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_insights_goal
+  ON insights(goal_id);
 
 -- 9. engagement_events  (user_id → users.id)
 CREATE TABLE IF NOT EXISTS engagement_events (
@@ -172,3 +182,6 @@ CREATE TABLE IF NOT EXISTS privacy_requests (
   created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_privacy_requests_user
+  ON privacy_requests(user_id);

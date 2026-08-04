@@ -72,7 +72,7 @@ describe("schema: all 11 tables created", () => {
 // ---------------------------------------------------------------------------
 
 describe("schema: CHECK constraints on enum columns", () => {
-  it("rejects invalid account_status on users", async () => {
+  it("rejects account_status = 'banned' on users", async () => {
     const db = await openMigratedDb();
     expect(() =>
       db
@@ -98,7 +98,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid persona_mode on profiles", async () => {
+  it("rejects persona_mode = 'invalid_mode' on profiles", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -111,7 +111,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid device_type on device_connections", async () => {
+  it("rejects device_type = 'treadmill' on device_connections", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -124,7 +124,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid connection_status on device_connections", async () => {
+  it("rejects connection_status = 'unknown' on device_connections", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -137,7 +137,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid sync_status on sync_runs", async () => {
+  it("rejects sync_status = 'pending' on sync_runs", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     db.prepare("INSERT INTO device_connections (id, user_id, device_type, connection_status) VALUES ('d1','u1','smartwatch','connected')").run();
@@ -151,7 +151,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid metric_domain on health_records", async () => {
+  it("rejects metric_domain = 'mood' on health_records", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     db.prepare("INSERT INTO device_connections (id, user_id, device_type, connection_status) VALUES ('d1','u1','smartwatch','connected')").run();
@@ -165,7 +165,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid source_type on health_records", async () => {
+  it("rejects source_type = 'bluetooth_scale' on health_records", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     db.prepare("INSERT INTO device_connections (id, user_id, device_type, connection_status) VALUES ('d1','u1','smartwatch','connected')").run();
@@ -179,7 +179,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid goal_type on goals", async () => {
+  it("rejects goal_type = 'run_marathon' on goals", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -192,7 +192,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid cadence on goals", async () => {
+  it("rejects cadence = 'hourly' on goals", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -205,7 +205,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid goal status on goals", async () => {
+  it("rejects status = 'cancelled' on goals", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -218,7 +218,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid category on alerts", async () => {
+  it("rejects category = 'reminder' on alerts", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -231,7 +231,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid priority on alerts", async () => {
+  it("rejects priority = 'critical' on alerts", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -244,7 +244,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid insight_type on insights", async () => {
+  it("rejects insight_type = 'prediction' on insights", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -257,7 +257,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid generator_name on insights", async () => {
+  it("rejects generator_name = 'Unknown Generator' on insights", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -270,7 +270,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid event_type on engagement_events", async () => {
+  it("rejects event_type = 'page_load' on engagement_events", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -283,7 +283,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid marketplace_status on partner_services", async () => {
+  it("rejects marketplace_status = 'active' on partner_services", async () => {
     const db = await openMigratedDb();
     expect(() =>
       db
@@ -295,7 +295,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid request_type on privacy_requests", async () => {
+  it("rejects request_type = 'anonymize' on privacy_requests", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
@@ -308,7 +308,7 @@ describe("schema: CHECK constraints on enum columns", () => {
     delete process.env.DB_PATH;
   });
 
-  it("rejects invalid request_status on privacy_requests", async () => {
+  it("rejects request_status = 'pending' on privacy_requests", async () => {
     const db = await openMigratedDb();
     db.prepare("INSERT INTO users (id, email, password_hash, account_status) VALUES ('u1','a@b.com','h','active')").run();
     expect(() =>
