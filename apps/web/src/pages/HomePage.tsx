@@ -77,15 +77,13 @@ export function HomePage() {
 
       <main className={styles.main}>
         <section aria-labelledby="hero-heading">
-          <div className={styles.sectionInner}>
-            <h1 id="hero-heading">One place for your complete wellness picture.</h1>
-            <p>
-              Connect your smartwatch and smart scale, see your health trends in
-              one dashboard, and get simple guidance you can act on every day.
-            </p>
-            <Link to="/signup">Get Started Free</Link>
-            <Link to="/about">Learn More</Link>
-          </div>
+          <h1 id="hero-heading">One place for your complete wellness picture.</h1>
+          <p>
+            Connect your smartwatch and smart scale, see your health trends in
+            one dashboard, and get simple guidance you can act on every day.
+          </p>
+          <Link to="/register">Get Started Free</Link>
+          <Link to="/about">Learn More</Link>
         </section>
 
         <section aria-labelledby="domains-heading" className={styles.domainsSection}>
