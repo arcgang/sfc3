@@ -166,3 +166,28 @@ test("Privacy Policy footer link points to /privacy route", () => {
   const link = screen.getByRole("link", { name: "Privacy Policy" });
   expect(link.getAttribute("href")).toBe("/privacy");
 });
+
+// ── Contact route ─────────────────────────────────────────────────────────────
+
+test("/contact renders the ContactPage", () => {
+  renderWithRouter("/contact");
+  screen.getByRole("heading", { name: /contact us/i, level: 1 });
+});
+
+// ── Persistent footer (visible on every route) ────────────────────────────────
+
+test("footer Privacy Policy link is present on /privacy route", () => {
+  renderWithRouter("/privacy");
+  screen.getByRole("link", { name: "Privacy Policy" });
+});
+
+test("footer Contact link is present on homepage", () => {
+  renderWithRouter("/");
+  screen.getByRole("link", { name: "Contact" });
+});
+
+test("footer Contact link points to /contact", () => {
+  renderWithRouter("/");
+  const links = screen.getAllByRole("link", { name: "Contact" });
+  expect(links.some((l) => l.getAttribute("href") === "/contact")).toBe(true);
+});

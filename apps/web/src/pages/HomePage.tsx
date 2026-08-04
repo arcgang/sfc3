@@ -129,15 +129,6 @@ export function HomePage() {
         </section>
       </main>
 
-      <footer>
-        <span aria-hidden="true">W</span>
-        <strong>WellnessHub</strong>
-        <nav aria-label="Footer navigation">
-          <Link to="/privacy">Privacy Policy</Link>
-          <Link to="/terms">Terms of Service</Link>
-          <Link to="/contact">Contact</Link>
-        </nav>
-      </footer>
     </>
   );
 }
