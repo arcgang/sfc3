@@ -4,8 +4,10 @@ import { v4 as uuidv4 } from "uuid";
 export function correlationIdMiddleware(
   _req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): void {
-  res.locals["correlationId"] = uuidv4();
+  const correlationId = uuidv4();
+  res.locals["correlationId"] = correlationId;
+  res.setHeader("X-Correlation-Id", correlationId);
   next();
 }
