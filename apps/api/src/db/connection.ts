@@ -2,9 +2,9 @@ import Database from "better-sqlite3";
 
 let instance: Database.Database | undefined;
 
-export function getDatabase(path?: string): Database.Database {
+export function getDatabase(): Database.Database {
   if (!instance) {
-    const dbPath = path ?? process.env.DB_PATH ?? "./wellnesshub.db";
+    const dbPath = process.env.DB_PATH ?? "./wellnesshub.db";
     instance = new Database(dbPath);
     instance.pragma("foreign_keys = ON");
   }

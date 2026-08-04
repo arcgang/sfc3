@@ -1,9 +1,15 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getDatabase } from "./connection.js";
 
-export function migrate(dbPath: string, migrationsDir: string): void {
-  const db = getDatabase(dbPath);
+export function migrate(migrationsDir: string): void {
+  const db = getDatabase();
+
+  db.pragma("foreign_keys = ON");
+
+  if (!existsSync(migrationsDir)) {
+    return;
+  }
 
   const files = readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))

@@ -47,8 +47,7 @@ describe("getDatabase", () => {
     delete process.env.DB_PATH;
   });
 
-  it("falls back to ./wellnesshub.db when DB_PATH is not set", async () => {
-    // Set DB_PATH to a temp file so the test does not pollute the working directory
+  it("opens the database at the path given by DB_PATH", async () => {
     const fallbackPath = join(tmpDir, "fallback.db");
     process.env.DB_PATH = fallbackPath;
 
@@ -70,20 +69,24 @@ describe("migrate", () => {
     const dbPath = join(tmpDir, "fk.db");
     const migrationsDir = join(tmpDir, "migrations-fk");
     mkdirSync(migrationsDir);
+    process.env.DB_PATH = dbPath;
 
     const { migrate } = await import("./migrate.js");
     const { getDatabase } = await import("./connection.js");
-    migrate(dbPath, migrationsDir);
+    migrate(migrationsDir);
 
-    const db = getDatabase(dbPath);
+    const db = getDatabase();
     const row = db.prepare("PRAGMA foreign_keys").get() as { foreign_keys: number };
     expect(row.foreign_keys).toBe(1);
+
+    delete process.env.DB_PATH;
   });
 
   it("runs .sql migration files in alphabetical filename order", async () => {
     const dbPath = join(tmpDir, "order.db");
     const migrationsDir = join(tmpDir, "migrations-order");
     mkdirSync(migrationsDir);
+    process.env.DB_PATH = dbPath;
 
     writeFileSync(
       join(migrationsDir, "002_add_col.sql"),
@@ -95,7 +98,7 @@ describe("migrate", () => {
     );
 
     const { migrate } = await import("./migrate.js");
-    await migrate(dbPath, migrationsDir);
+    await migrate(migrationsDir);
 
     const Database = (await import("better-sqlite3")).default;
     const db = new Database(dbPath);
@@ -103,12 +106,15 @@ describe("migrate", () => {
     const row = db.prepare("SELECT label FROM events WHERE id = 1").get() as { label: string };
     expect(row.label).toBe("hello");
     db.close();
+
+    delete process.env.DB_PATH;
   });
 
   it("ignores non-.sql files in the migrations directory", async () => {
     const dbPath = join(tmpDir, "nonjunk.db");
     const migrationsDir = join(tmpDir, "migrations-nonjunk");
     mkdirSync(migrationsDir);
+    process.env.DB_PATH = dbPath;
 
     writeFileSync(
       join(migrationsDir, "001_readme.txt"),
@@ -120,7 +126,7 @@ describe("migrate", () => {
     );
 
     const { migrate } = await import("./migrate.js");
-    expect(() => migrate(dbPath, migrationsDir)).not.toThrow();
+    expect(() => migrate(migrationsDir)).not.toThrow();
 
     const Database = (await import("better-sqlite3")).default;
     const db = new Database(dbPath);
@@ -128,12 +134,15 @@ describe("migrate", () => {
     const row = db.prepare("SELECT id FROM things WHERE id = 99").get() as { id: number };
     expect(row.id).toBe(99);
     db.close();
+
+    delete process.env.DB_PATH;
   });
 
   it("wraps each migration in a transaction so a failure rolls back that file only", async () => {
     const dbPath = join(tmpDir, "rollback.db");
     const migrationsDir = join(tmpDir, "migrations-rollback");
     mkdirSync(migrationsDir);
+    process.env.DB_PATH = dbPath;
 
     writeFileSync(
       join(migrationsDir, "001_good.sql"),
@@ -145,7 +154,7 @@ describe("migrate", () => {
     );
 
     const { migrate } = await import("./migrate.js");
-    expect(() => migrate(dbPath, migrationsDir)).toThrow();
+    expect(() => migrate(migrationsDir)).toThrow();
 
     const Database = (await import("better-sqlite3")).default;
     const db = new Database(dbPath);
@@ -153,14 +162,30 @@ describe("migrate", () => {
     const row = db.prepare("SELECT id FROM good WHERE id = 1").get() as { id: number };
     expect(row.id).toBe(1);
     db.close();
+
+    delete process.env.DB_PATH;
   });
 
   it("is safe to call when the migrations directory is empty", async () => {
     const dbPath = join(tmpDir, "empty.db");
     const migrationsDir = join(tmpDir, "migrations-empty");
     mkdirSync(migrationsDir);
+    process.env.DB_PATH = dbPath;
 
     const { migrate } = await import("./migrate.js");
-    expect(() => migrate(dbPath, migrationsDir)).not.toThrow();
+    expect(() => migrate(migrationsDir)).not.toThrow();
+
+    delete process.env.DB_PATH;
+  });
+
+  it("is safe to call when the migrations directory does not exist", async () => {
+    const dbPath = join(tmpDir, "nodirtest.db");
+    const migrationsDir = join(tmpDir, "migrations-nonexistent");
+    process.env.DB_PATH = dbPath;
+
+    const { migrate } = await import("./migrate.js");
+    expect(() => migrate(migrationsDir)).not.toThrow();
+
+    delete process.env.DB_PATH;
   });
 });

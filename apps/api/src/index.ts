@@ -6,10 +6,9 @@ import { migrate } from "./db/migrate.js";
 
 const port = Number(process.env.PORT ?? 3000);
 
-const dbPath = process.env.DB_PATH ?? "./wellnesshub.db";
 const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "db", "migrations");
 
-migrate(dbPath, migrationsDir);
+migrate(migrationsDir);
 
 createServer((req, res) => {
   if (req.url === "/health") {
