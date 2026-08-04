@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { type ZodSchema, ZodError } from "zod";
+import { type ZodSchema } from "zod";
 import type { ErrorResponse } from "../types/errors.js";
 
 export function validateBody(schema: ZodSchema) {
@@ -16,7 +16,7 @@ export function validateBody(schema: ZodSchema) {
         ? res.locals["correlationId"]
         : "";
 
-    const details = (result.error as ZodError).issues.map((issue) => ({
+    const details = result.error.issues.map((issue) => ({
       code: issue.code,
       message: issue.message,
       field: issue.path.join("."),

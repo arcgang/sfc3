@@ -20,7 +20,8 @@ const echoSchema = z.object({
 });
 
 app.post("/echo", validateBody(echoSchema), (req: Request, res: Response) => {
-  res.json({ message: (req.body as { message: string }).message });
+  const { message } = req.body as z.infer<typeof echoSchema>;
+  res.json({ message });
 });
 
 app.listen(config.port, () => {

@@ -43,12 +43,11 @@ describe("validateBody middleware", () => {
 
     const body = res.body as ErrorResponse;
     expect(body.error.details.length).toBeGreaterThanOrEqual(1);
-    const detail = body.error.details[0];
-    expect(typeof detail.code).toBe("string");
-    expect(detail.code.length).toBeGreaterThan(0);
-    expect(typeof detail.message).toBe("string");
-    expect(detail.message.length).toBeGreaterThan(0);
-    expect(typeof detail.field).toBe("string");
+    const nameDetail = body.error.details.find((d) => d.field === "name");
+    expect(nameDetail).toBeDefined();
+    expect(nameDetail?.code).toBe("invalid_type");
+    expect(nameDetail?.message).toBe("Invalid input: expected string, received undefined");
+    expect(nameDetail?.field).toBe("name");
   });
 
   it("returns error.details with field set to the failing field path", async () => {
