@@ -1,14 +1,15 @@
-import { createServer } from "node:http";
+import express from "express";
 import { health } from "./health.js";
+import { buildConfig } from "./config.js";
 
-const port = Number(process.env.PORT ?? 3000);
+const config = buildConfig(process.env as Record<string, string | undefined>);
 
-createServer((req, res) => {
-  if (req.url === "/health") {
-    res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(health()));
-    return;
-  }
-  res.statusCode = 404;
-  res.end("not found");
-}).listen(port, () => console.log(`service listening on :${port}`));
+const app = express();
+
+app.get("/health", (_req, res) => {
+  res.json(health());
+});
+
+app.listen(config.port, () => {
+  console.log(`service listening on :${config.port}`);
+});
