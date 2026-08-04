@@ -57,10 +57,10 @@ describe("authMiddleware", () => {
       expect(body.error.type).toBe("AUTH_TOKEN_INVALID");
     });
 
-    it("returns an error.details array", async () => {
+    it("returns an empty error.details array", async () => {
       const app = makeApp();
       const { body } = await hitProtected(app) as { body: ErrorResponse };
-      expect(Array.isArray(body.error.details)).toBe(true);
+      expect(body.error.details).toEqual([]);
     });
 
     it("returns meta.correlationId as a UUID", async () => {
@@ -94,7 +94,8 @@ describe("authMiddleware", () => {
           (call[0] as Record<string, unknown>)["event"] === "auth.login_attempt",
       );
       expect(authLog).toBeDefined();
-      expect((authLog![0] as Record<string, unknown>)["success"]).toBe(false);
+      if (!authLog) throw new Error("expected auth log");
+      expect((authLog[0] as Record<string, unknown>)["success"]).toBe(false);
     });
   });
 
@@ -125,7 +126,8 @@ describe("authMiddleware", () => {
           (call[0] as Record<string, unknown>)["event"] === "auth.login_attempt",
       );
       expect(authLog).toBeDefined();
-      expect((authLog![0] as Record<string, unknown>)["success"]).toBe(false);
+      if (!authLog) throw new Error("expected auth log");
+      expect((authLog[0] as Record<string, unknown>)["success"]).toBe(false);
     });
   });
 
@@ -156,7 +158,8 @@ describe("authMiddleware", () => {
           (call[0] as Record<string, unknown>)["event"] === "auth.login_attempt",
       );
       expect(authLog).toBeDefined();
-      expect((authLog![0] as Record<string, unknown>)["success"]).toBe(false);
+      if (!authLog) throw new Error("expected auth log");
+      expect((authLog[0] as Record<string, unknown>)["success"]).toBe(false);
     });
   });
 
@@ -171,6 +174,21 @@ describe("authMiddleware", () => {
       const app = makeApp();
       const { body } = await hitProtected(app, "Bearer not-a-jwt-at-all") as { body: ErrorResponse };
       expect(body.error.type).toBe("AUTH_TOKEN_INVALID");
+    });
+
+    it("emits a structured auth.login_attempt log with success = false", async () => {
+      const app = makeApp();
+      await hitProtected(app, "Bearer not-a-jwt-at-all");
+      const calls = consoleSpy.mock.calls;
+      const authLog = calls.find(
+        (call) =>
+          typeof call[0] === "object" &&
+          call[0] !== null &&
+          (call[0] as Record<string, unknown>)["event"] === "auth.login_attempt",
+      );
+      expect(authLog).toBeDefined();
+      if (!authLog) throw new Error("expected auth log");
+      expect((authLog[0] as Record<string, unknown>)["success"]).toBe(false);
     });
   });
 
