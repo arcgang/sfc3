@@ -1,7 +1,7 @@
 export interface ErrorDetail {
   code: string;
   message: string;
-  field: string;
+  field?: string;
 }
 
 export interface ErrorResponse {
