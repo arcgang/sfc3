@@ -1,10 +1,9 @@
-import Database from "better-sqlite3";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { getDatabase } from "./connection.js";
 
-export async function migrate(dbPath: string, migrationsDir: string): Promise<void> {
-  const db = new Database(dbPath);
-  db.pragma("foreign_keys = ON");
+export function migrate(dbPath: string, migrationsDir: string): void {
+  const db = getDatabase(dbPath);
 
   const files = readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
@@ -17,6 +16,4 @@ export async function migrate(dbPath: string, migrationsDir: string): Promise<vo
     });
     runMigration();
   }
-
-  db.close();
 }

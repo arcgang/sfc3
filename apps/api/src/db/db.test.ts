@@ -72,13 +72,12 @@ describe("migrate", () => {
     mkdirSync(migrationsDir);
 
     const { migrate } = await import("./migrate.js");
-    await migrate(dbPath, migrationsDir);
+    const { getDatabase } = await import("./connection.js");
+    migrate(dbPath, migrationsDir);
 
-    const Database = (await import("better-sqlite3")).default;
-    const db = new Database(dbPath);
+    const db = getDatabase(dbPath);
     const row = db.prepare("PRAGMA foreign_keys").get() as { foreign_keys: number };
     expect(row.foreign_keys).toBe(1);
-    db.close();
   });
 
   it("runs .sql migration files in alphabetical filename order", async () => {
@@ -121,7 +120,7 @@ describe("migrate", () => {
     );
 
     const { migrate } = await import("./migrate.js");
-    await expect(migrate(dbPath, migrationsDir)).resolves.toBeUndefined();
+    expect(() => migrate(dbPath, migrationsDir)).not.toThrow();
 
     const Database = (await import("better-sqlite3")).default;
     const db = new Database(dbPath);
@@ -146,7 +145,7 @@ describe("migrate", () => {
     );
 
     const { migrate } = await import("./migrate.js");
-    await expect(migrate(dbPath, migrationsDir)).rejects.toThrow();
+    expect(() => migrate(dbPath, migrationsDir)).toThrow();
 
     const Database = (await import("better-sqlite3")).default;
     const db = new Database(dbPath);
@@ -162,6 +161,6 @@ describe("migrate", () => {
     mkdirSync(migrationsDir);
 
     const { migrate } = await import("./migrate.js");
-    await expect(migrate(dbPath, migrationsDir)).resolves.toBeUndefined();
+    expect(() => migrate(dbPath, migrationsDir)).not.toThrow();
   });
 });
