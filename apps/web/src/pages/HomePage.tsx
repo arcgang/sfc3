@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import styles from "./HomePage.module.css";
 
 const HEALTH_DOMAINS = [
   {
@@ -64,80 +65,100 @@ const TRUST_CARDS = [
 
 export function HomePage() {
   return (
-    <>
-      <header>
-        <nav aria-label="Main navigation">
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <nav aria-label="Main navigation" className={styles.nav}>
           <span aria-hidden="true">W</span>
-          <strong>WellnessHub</strong>
-          <Link to="/login">Log In</Link>
-          <Link to="/signup">Get Started</Link>
+          <strong className={styles.navBrand}>WellnessHub</strong>
+          <Link to="/login" className={styles.navLink}>Log In</Link>
+          <Link to="/signup" className={styles.navLink}>Get Started</Link>
         </nav>
       </header>
 
-      <main>
+      <main className={styles.main}>
         <section aria-labelledby="hero-heading">
-          <h1 id="hero-heading">One place for your complete wellness picture.</h1>
-          <p>
-            Connect your smartwatch and smart scale, see your health trends in
-            one dashboard, and get simple guidance you can act on every day.
-          </p>
-          <Link to="/signup">Get Started Free</Link>
-          <Link to="/about">Learn More</Link>
+          <div className={styles.sectionInner}>
+            <h1 id="hero-heading">One place for your complete wellness picture.</h1>
+            <p>
+              Connect your smartwatch and smart scale, see your health trends in
+              one dashboard, and get simple guidance you can act on every day.
+            </p>
+            <Link to="/signup">Get Started Free</Link>
+            <Link to="/about">Learn More</Link>
+          </div>
         </section>
 
-        <section aria-labelledby="domains-heading">
-          <h2 id="domains-heading">Everything you need to track your wellness</h2>
-          <p>Four core health domains monitored in one unified dashboard</p>
-          <ul>
-            {HEALTH_DOMAINS.map((domain) => (
-              <li key={domain.id}>
-                <span aria-hidden="true">{domain.emoji}</span>
-                <h3>{domain.title}</h3>
-                <p>{domain.description}</p>
-              </li>
-            ))}
-          </ul>
+        <section aria-labelledby="domains-heading" className={styles.domainsSection}>
+          <div className={styles.sectionInner}>
+            <h2 id="domains-heading" className={styles.sectionHeading}>
+              Everything you need to track your wellness
+            </h2>
+            <p className={styles.sectionSubheading}>
+              Four core health domains monitored in one unified dashboard
+            </p>
+            <ul className={styles.cardGrid}>
+              {HEALTH_DOMAINS.map((domain) => (
+                <li key={domain.id} className={styles.card}>
+                  <span aria-hidden="true" className={styles.cardEmoji}>
+                    {domain.emoji}
+                  </span>
+                  <h3 className={styles.cardHeading}>{domain.title}</h3>
+                  <p className={styles.cardDescription}>{domain.description}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
-        <section aria-labelledby="stats-heading">
-          <h2 id="stats-heading" className="sr-only">Statistics</h2>
-          <ul>
-            {STATS.map((stat) => (
-              <li key={stat.label}>
-                <strong>{stat.value}</strong>
-                <span>{stat.label}</span>
-              </li>
-            ))}
-          </ul>
+        <section aria-labelledby="stats-heading" className={styles.statsSection}>
+          <div className={styles.sectionInner}>
+            <h2 id="stats-heading" className="sr-only">Statistics</h2>
+            <ul className={styles.statsList}>
+              {STATS.map((stat) => (
+                <li key={stat.label}>
+                  <strong className={styles.statValue}>{stat.value}</strong>
+                  <span className={styles.statLabel}>{stat.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
-        <section aria-labelledby="trust-heading">
-          <h2 id="trust-heading">Your data, your control</h2>
-          <p>
-            We never sell your health information to third parties. Your
-            wellness data is encrypted, secure, and always under your control.
-          </p>
-          <ul>
-            {TRUST_CARDS.map((card) => (
-              <li key={card.id}>
-                <span aria-hidden="true">{card.emoji}</span>
-                <h3>{card.title}</h3>
-                <p>{card.description}</p>
-              </li>
-            ))}
-          </ul>
+        <section aria-labelledby="trust-heading" className={styles.trustSection}>
+          <div className={styles.sectionInner}>
+            <h2 id="trust-heading" className={styles.sectionHeading}>
+              Your data, your control
+            </h2>
+            <p className={styles.trustIntro}>
+              We never sell your health information to third parties. Your
+              wellness data is encrypted, secure, and always under your control.
+            </p>
+            <ul className={styles.cardGrid}>
+              {TRUST_CARDS.map((card) => (
+                <li key={card.id} className={styles.card}>
+                  <span aria-hidden="true" className={styles.cardEmoji}>
+                    {card.emoji}
+                  </span>
+                  <h3 className={styles.cardHeading}>{card.title}</h3>
+                  <p className={styles.cardDescription}>{card.description}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       </main>
 
-      <footer>
-        <span aria-hidden="true">W</span>
-        <strong>WellnessHub</strong>
-        <nav aria-label="Footer navigation">
-          <Link to="/privacy">Privacy Policy</Link>
-          <Link to="/terms">Terms of Service</Link>
-          <Link to="/contact">Contact</Link>
-        </nav>
+      <footer className={styles.footer}>
+        <div className={styles.footerInner}>
+          <span aria-hidden="true">W</span>
+          <strong className={styles.footerBrand}>WellnessHub</strong>
+          <nav aria-label="Footer navigation" className={styles.footerNav}>
+            <Link to="/privacy" className={styles.footerLink}>Privacy Policy</Link>
+            <Link to="/terms" className={styles.footerLink}>Terms of Service</Link>
+            <Link to="/contact" className={styles.footerLink}>Contact</Link>
+          </nav>
+        </div>
       </footer>
-    </>
+    </div>
   );
 }

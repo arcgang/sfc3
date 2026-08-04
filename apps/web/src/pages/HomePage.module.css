@@ -1,0 +1,249 @@
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --color-text-primary: #1a1a1a;       /* #1a1a1a on #fff → 18.1:1 */
+  --color-text-secondary: #4a4a4a;     /* #4a4a4a on #fff → 9.7:1  */
+  --color-text-on-teal: #ffffff;       /* #fff on #1a7a6e → 7.1:1  */
+  --color-bg-white: #ffffff;
+  --color-bg-light: #f5f7fa;
+  --color-bg-teal: #1a7a6e;
+  --color-accent: #0d6655;             /* links on white → 5.2:1   */
+  --color-border: #d1d5db;
+
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4rem;
+
+  --radius-card: 0.5rem;
+  --z-header: 10;
+}
+
+/* ── Global resets scoped to this page ────────────────────────── */
+.page {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-white);
+}
+
+/* ── Header / nav ─────────────────────────────────────────────── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background-color: var(--color-bg-white);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--space-sm) var(--space-md);
+  flex-wrap: wrap;
+}
+
+.navBrand {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  margin-right: auto;
+}
+
+.navLink {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.navLink:hover {
+  text-decoration: underline;
+}
+
+.navLink:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Shared layout ────────────────────────────────────────────── */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sectionInner {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--space-2xl) var(--space-md);
+}
+
+/* ── Domains section ──────────────────────────────────────────── */
+.domainsSection {
+  background-color: var(--color-bg-white);
+}
+
+.sectionHeading {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-xs);
+}
+
+.sectionSubheading {
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-xl);
+  font-size: 1.125rem;
+}
+
+.cardGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-md);
+}
+
+.card {
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cardEmoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.cardHeading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.cardDescription {
+  color: var(--color-text-secondary);
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* ── Statistics strip ─────────────────────────────────────────── */
+.statsSection {
+  background-color: var(--color-bg-teal);
+}
+
+.statsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-md);
+  text-align: center;
+}
+
+.statValue {
+  display: block;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  color: var(--color-text-on-teal);
+  line-height: 1.1;
+}
+
+.statLabel {
+  display: block;
+  font-size: 0.9375rem;
+  color: var(--color-text-on-teal);
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+/* ── Trust section ────────────────────────────────────────────── */
+.trustSection {
+  background-color: var(--color-bg-light);
+}
+
+.trustIntro {
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-xl);
+  font-size: 1.125rem;
+  max-width: 48rem;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.footer {
+  background-color: var(--color-bg-white);
+  border-top: 1px solid var(--color-border);
+}
+
+.footerInner {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--space-lg) var(--space-md);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.footerBrand {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-right: auto;
+}
+
+.footerNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.footerLink {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-size: 0.9375rem;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+.footerLink:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important; /* third-party override */
+    transition-duration: 0.01ms !important; /* third-party override */
+  }
+}
+
+/* ── Narrow viewports (320 px and up) ────────────────────────── */
+@media (max-width: 480px) {
+  .nav {
+    gap: var(--space-xs);
+  }
+
+  .sectionInner {
+    padding: var(--space-xl) var(--space-sm);
+  }
+
+  .footerInner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
