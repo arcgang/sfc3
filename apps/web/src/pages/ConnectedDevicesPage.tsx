@@ -20,6 +20,15 @@ interface GetConnectionsResponse {
   };
 }
 
+interface SyncResponse {
+  data: {
+    syncRunId: string;
+    syncStatus: string;
+    recordsWritten: number;
+    recordsDiscarded: number;
+  };
+}
+
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString("en-US", {
@@ -65,10 +74,36 @@ function statusBadge(status: string): string {
 
 interface DeviceCardProps {
   device: DeviceDto;
+  onSyncSuccess: (deviceId: string, syncedAt: string) => void;
 }
 
-function DeviceCard({ device }: DeviceCardProps) {
+function DeviceCard({ device, onSyncSuccess }: DeviceCardProps) {
   const navigate = useNavigate();
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  function handleSyncNow() {
+    setSyncing(true);
+    setSyncError(null);
+
+    apiFetch<SyncResponse>(`/devices/${device.id}/sync`, { method: "POST" })
+      .then((res) => {
+        setSyncing(false);
+        const syncedAt = new Date().toISOString();
+        onSyncSuccess(device.id, syncedAt);
+        if (res.data.syncStatus === "partial_discard") {
+          setSyncError(
+            "Sync completed with partial data: some measurements were discarded due to missing required fields.",
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        setSyncing(false);
+        setSyncError(
+          err instanceof Error ? err.message : "Sync failed. Please try again.",
+        );
+      });
+  }
 
   return (
     <li className={styles.card}>
@@ -106,10 +141,22 @@ function DeviceCard({ device }: DeviceCardProps) {
         </div>
       </dl>
 
+      {syncError && (
+        <p role="alert" className={styles.syncError}>
+          {syncError}
+        </p>
+      )}
+
       <div className={styles.cardActions}>
         {device.status === "connected" ? (
-          <button type="button" className={styles.btnSecondary}>
-            Sync Now
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={handleSyncNow}
+            disabled={syncing}
+            aria-busy={syncing}
+          >
+            {syncing ? "Syncing…" : "Sync Now"}
           </button>
         ) : (
           <button type="button" className={styles.btnSecondary}>
@@ -221,7 +268,19 @@ export function ConnectedDevicesPage() {
         {!loading && !error && (
           <ul className={styles.deviceList} aria-label="Connected devices">
             {devices.map((device) => (
-              <DeviceCard key={device.id} device={device} />
+              <DeviceCard
+                key={device.id}
+                device={device}
+                onSyncSuccess={(deviceId, syncedAt) => {
+                  setDevices((prev) =>
+                    prev.map((d) =>
+                      d.id === deviceId
+                        ? { ...d, lastSyncAt: syncedAt, status: "connected" }
+                        : d,
+                    ),
+                  );
+                }}
+              />
             ))}
           </ul>
         )}
