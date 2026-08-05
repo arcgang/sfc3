@@ -11,6 +11,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
 import { authRouter } from "./api/authController.js";
 import { goalsRouter } from "./api/goalsController.js";
+import { servicesRouter } from "./api/servicesController.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -44,6 +45,7 @@ app.post("/echo", validateBody(echoSchema), (req: Request, res: Response) => {
 });
 
 app.use("/api/v1/goals", requireAuth, goalsRouter);
+app.use("/api/v1/services", requireAuth, servicesRouter);
 
 app.use(errorHandler);
 

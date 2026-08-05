@@ -5,12 +5,6 @@ import { getDatabase } from "./connection.js";
 export function migrate(migrationsDir: string): void {
   const db = getDatabase();
 
-  db.pragma("foreign_keys = ON");
-
-  if (!existsSync(migrationsDir)) {
-    return;
-  }
-
   // Ensure the tracking table exists so we can skip already-applied migrations
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -19,16 +13,24 @@ export function migrate(migrationsDir: string): void {
     )
   `);
 
+  if (!existsSync(migrationsDir)) {
+    return;
+  }
+
   const files = readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
     .sort();
 
-  for (const file of files) {
-    const already = db
-      .prepare("SELECT 1 FROM _migrations WHERE filename = ?")
-      .get(file);
-    if (already) continue;
+  const applied = new Set(
+    (db.prepare("SELECT filename FROM _migrations").all() as { filename: string }[]).map(
+      (r) => r.filename,
+    ),
+  );
 
+  for (const file of files) {
+    if (applied.has(file)) {
+      continue;
+    }
     const sql = readFileSync(join(migrationsDir, file), "utf-8");
     const runMigration = db.transaction(() => {
       db.exec(sql);
