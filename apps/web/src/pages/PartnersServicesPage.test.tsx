@@ -159,29 +159,33 @@ test("Stress Relief service card heading is rendered", () => {
 test("FitPro Training card shows 'Fitness' category badge", () => {
   renderPartnersServicesPage();
   const heading = screen.getByRole("heading", { name: "FitPro Training", level: 3 });
-  const card = heading.closest("li") as HTMLElement;
-  expect(card.textContent).toContain("Fitness");
+  const card = heading.closest("li");
+  expect(card).not.toBeNull();
+  expect(card!.textContent).toContain("Fitness");
 });
 
 test("NutriGuide card shows 'Nutrition' category badge", () => {
   renderPartnersServicesPage();
   const heading = screen.getByRole("heading", { name: "NutriGuide", level: 3 });
-  const card = heading.closest("li") as HTMLElement;
-  expect(card.textContent).toContain("Nutrition");
+  const card = heading.closest("li");
+  expect(card).not.toBeNull();
+  expect(card!.textContent).toContain("Nutrition");
 });
 
 test("MindfulMe card shows 'Mental Health' category badge", () => {
   renderPartnersServicesPage();
   const heading = screen.getByRole("heading", { name: "MindfulMe", level: 3 });
-  const card = heading.closest("li") as HTMLElement;
-  expect(card.textContent).toContain("Mental Health");
+  const card = heading.closest("li");
+  expect(card).not.toBeNull();
+  expect(card!.textContent).toContain("Mental Health");
 });
 
 test("SleepWell Program card shows 'Sleep' category badge", () => {
   renderPartnersServicesPage();
   const heading = screen.getByRole("heading", { name: "SleepWell Program", level: 3 });
-  const card = heading.closest("li") as HTMLElement;
-  expect(card.textContent).toContain("Sleep");
+  const card = heading.closest("li");
+  expect(card).not.toBeNull();
+  expect(card!.textContent).toContain("Sleep");
 });
 
 // ── Service cards — descriptions ──────────────────────────────────────────────
