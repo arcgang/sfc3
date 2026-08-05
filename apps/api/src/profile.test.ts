@@ -1,0 +1,422 @@
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi,
+  type MockInstance,
+} from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import express from "express";
+import supertest from "supertest";
+import Database from "better-sqlite3";
+import jwt from "jsonwebtoken";
+
+const MIGRATIONS_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "db/migrations",
+);
+
+const JWT_SECRET = "test-secret-for-profile-tests";
+
+class TestContext {
+  private readonly _tmpDir: string;
+
+  constructor() {
+    this._tmpDir = mkdtempSync(join(tmpdir(), "profile-test-"));
+  }
+
+  get tmpDir(): string {
+    return this._tmpDir;
+  }
+
+  cleanup(): void {
+    rmSync(this._tmpDir, { recursive: true, force: true });
+  }
+}
+
+let ctx: TestContext;
+let consoleSpy: MockInstance;
+
+beforeEach(async () => {
+  const { resetDatabase } = await import("./db/connection.js");
+  resetDatabase();
+  ctx = new TestContext();
+  consoleSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+});
+
+afterEach(async () => {
+  const { resetDatabase } = await import("./db/connection.js");
+  resetDatabase();
+  ctx.cleanup();
+  consoleSpy.mockRestore();
+  delete process.env["DB_PATH"];
+});
+
+async function buildApp() {
+  const dbPath = join(ctx.tmpDir, "test.db");
+  process.env["DB_PATH"] = dbPath;
+
+  const { migrate } = await import("./db/migrate.js");
+  migrate(MIGRATIONS_DIR);
+
+  const { profileRouter } = await import("./routes/profile.js");
+  const { authMiddleware } = await import("./middleware/auth.js");
+  const { correlationIdMiddleware } = await import(
+    "./middleware/correlationId.js"
+  );
+  const { errorHandler } = await import("./middleware/errorHandler.js");
+
+  const app = express();
+  app.use(express.json());
+  app.use(correlationIdMiddleware);
+  app.use("/api/v1/profile", authMiddleware(JWT_SECRET), profileRouter);
+  app.use(errorHandler);
+  return app;
+}
+
+function seedUser(dbPath: string): string {
+  const userId = "00000000-0000-0000-0000-000000000001";
+  const db = new Database(dbPath);
+  db.prepare(
+    `INSERT INTO users (id, email, password_hash, full_name, account_status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'active', strftime('%Y-%m-%dT%H:%M:%SZ','now'), strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
+  ).run(userId, "test@example.com", "hashed", "Test User");
+  db.close();
+  return userId;
+}
+
+function makeToken(userId: string): string {
+  return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: "1h" });
+}
+
+const VALID_BODY = {
+  fullName: "Sarah Chen",
+  dateOfBirth: "1991-06-18",
+  gender: "female",
+  wellnessPreferences: ["steps", "sleep"],
+};
+
+// ---------------------------------------------------------------------------
+// 200 on valid body — persists and returns profile
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — valid body → 200 and persisted", () => {
+  it("returns HTTP 200 for a valid profile payload", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns data.profile.fullName matching the submitted fullName", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const body = res.body as { data: { profile: { fullName: string } } };
+    expect(body.data.profile.fullName).toBe("Sarah Chen");
+  });
+
+  it("persists the fullName to the profiles table", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT full_name FROM profiles WHERE user_id = ?")
+      .get(userId) as { full_name: string } | undefined;
+    db.close();
+
+    expect(row?.full_name).toBe("Sarah Chen");
+  });
+
+  it("persists the caller-supplied dateOfBirth to the profiles table", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT date_of_birth FROM profiles WHERE user_id = ?")
+      .get(userId) as { date_of_birth: string } | undefined;
+    db.close();
+
+    expect(row?.date_of_birth).toBe("1991-06-18");
+  });
+
+  it("persists the caller-supplied gender to the profiles table", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT gender FROM profiles WHERE user_id = ?")
+      .get(userId) as { gender: string } | undefined;
+    db.close();
+
+    expect(row?.gender).toBe("female");
+  });
+
+  it("persists the caller-supplied wellnessPreferences as JSON array in profiles table", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT wellness_preferences FROM profiles WHERE user_id = ?")
+      .get(userId) as { wellness_preferences: string } | undefined;
+    db.close();
+
+    const parsed = JSON.parse(row?.wellness_preferences ?? "null") as unknown;
+    expect(parsed).toEqual(["steps", "sleep"]);
+  });
+
+  it("returns meta.correlationId as a non-empty string", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const body = res.body as { meta: { correlationId: string } };
+    expect(typeof body.meta.correlationId).toBe("string");
+    expect(body.meta.correlationId.length).toBeGreaterThan(0);
+  });
+
+  it("returns data.profile.userId matching the authenticated user id", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const body = res.body as { data: { profile: { userId: string } } };
+    expect(body.data.profile.userId).toBe(userId);
+  });
+
+  it("second PUT updates the existing profile row rather than inserting a duplicate", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, fullName: "Sarah Updated" });
+
+    const db = new Database(dbPath);
+    const rows = db
+      .prepare("SELECT full_name FROM profiles WHERE user_id = ?")
+      .all(userId) as Array<{ full_name: string }>;
+    db.close();
+
+    expect(rows.length).toBe(1);
+    expect(rows[0]?.full_name).toBe("Sarah Updated");
+  });
+
+  it("emits a profile.updated console log on success", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    consoleSpy.mockClear();
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const hasEvent = calls.some(
+      (arg) => typeof arg === "object" && arg["event"] === "profile.updated",
+    );
+    expect(hasEvent).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 422 on missing / blank fullName
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — missing or blank fullName → 422", () => {
+  it("returns HTTP 422 when fullName is absent", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ dateOfBirth: "1991-06-18" });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("returns a field-level error detail identifying 'fullName' when fullName is absent", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ dateOfBirth: "1991-06-18" });
+
+    const body = res.body as { error: { details: Array<{ field: string }> } };
+    expect(body.error.details.some((d) => d.field === "fullName")).toBe(true);
+  });
+
+  it("returns HTTP 422 when fullName is an empty string", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ fullName: "" });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("returns error.type REQUEST_VALIDATION_FAILED when fullName is absent", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+
+    const body = res.body as { error: { type: string } };
+    expect(body.error.type).toBe("REQUEST_VALIDATION_FAILED");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 401 on missing / invalid JWT
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — missing or invalid JWT → 401", () => {
+  it("returns HTTP 401 when no Authorization header is sent", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .send(VALID_BODY);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns HTTP 401 when a malformed token is sent", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", "Bearer not.a.valid.jwt")
+      .send(VALID_BODY);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns HTTP 401 when token is signed with a different secret", async () => {
+    const app = await buildApp();
+
+    const badToken = jwt.sign({ sub: "some-user" }, "wrong-secret", { expiresIn: "1h" });
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${badToken}`)
+      .send(VALID_BODY);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns HTTP 401 when token is expired", async () => {
+    const app = await buildApp();
+
+    const expiredToken = jwt.sign({ sub: "some-user" }, JWT_SECRET, { expiresIn: -1 });
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${expiredToken}`)
+      .send(VALID_BODY);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns error.type AUTH_TOKEN_INVALID when no token is provided", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .send(VALID_BODY);
+
+    const body = res.body as { error: { type: string } };
+    expect(body.error.type).toBe("AUTH_TOKEN_INVALID");
+  });
+});
