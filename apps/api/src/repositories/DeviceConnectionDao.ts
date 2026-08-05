@@ -52,21 +52,40 @@ export class DeviceConnectionDao {
     return this.mapRow(row);
   }
 
+  findAllByUser(userId: string): DeviceConnection[] {
+    const rows = this.db
+      .prepare(
+        `SELECT id, user_id, device_type, device_name, provider, connection_status,
+                last_sync_at, battery_level, connected_since, created_at, updated_at
+           FROM device_connections
+          WHERE user_id = ?
+          ORDER BY created_at ASC`,
+      )
+      .all(userId) as RawRow[];
+    return rows.map((r) => this.mapRow(r));
+  }
+
   create(params: {
     userId: string;
     deviceType: DeviceType;
+    provider?: string;
+    deviceName?: string;
+    batteryLevel?: string;
   }): DeviceConnection {
     const id = randomUUID();
     const now = new Date().toISOString();
+    const provider = params.provider ?? "";
+    const deviceName = params.deviceName ?? "";
+    const batteryLevel = params.batteryLevel ?? null;
 
     this.db
       .prepare(
         `INSERT INTO device_connections
            (id, user_id, device_type, device_name, provider, connection_status,
             last_sync_at, battery_level, connected_since, created_at, updated_at)
-         VALUES (?, ?, ?, '', '', 'connected', NULL, NULL, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, 'connected', NULL, ?, ?, ?, ?)`,
       )
-      .run(id, params.userId, params.deviceType, now, now, now);
+      .run(id, params.userId, params.deviceType, deviceName, provider, batteryLevel, now, now, now);
 
     const created = this.findByUserAndType(params.userId, params.deviceType);
     if (!created) {
