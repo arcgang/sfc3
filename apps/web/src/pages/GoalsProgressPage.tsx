@@ -10,6 +10,8 @@ type GoalType =
 
 type Cadence = "daily" | "weekly";
 
+type GoalStatus = "active" | "at_risk" | "missed" | "completed" | "abandoned";
+
 interface GoalRow {
   id: string;
   goalType: GoalType;
@@ -17,7 +19,9 @@ interface GoalRow {
   targetUnit: string;
   cadence: Cadence;
   startDate: string;
-  status: "active" | "completed" | "abandoned";
+  status: GoalStatus;
+  currentValue?: number;
+  weekOverWeekChange?: string | null;
 }
 
 interface CreateGoalBody {
@@ -42,6 +46,13 @@ const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   active_minutes_weekly: "Exercise active minutes weekly",
 };
 
+const GOAL_TYPE_ICONS: Record<GoalType, string> = {
+  steps_daily: "🚶",
+  sleep_minutes_daily: "😴",
+  weight_target: "⚖️",
+  active_minutes_weekly: "🏃",
+};
+
 const GOAL_TYPE_DEFAULT_UNIT: Record<GoalType, string> = {
   steps_daily: "steps",
   sleep_minutes_daily: "minutes",
@@ -60,17 +71,33 @@ const STATUS_LABEL: Record<string, string> = {
   active: "On Track",
   at_risk: "At Risk",
   missed: "Missed",
+  completed: "Completed",
+  abandoned: "Archived",
 };
 
 function goalTypeLabel(type: GoalType): string {
   return GOAL_TYPE_LABELS[type] ?? type;
 }
 
+function goalTypeIcon(type: GoalType): string {
+  return GOAL_TYPE_ICONS[type] ?? "🎯";
+}
+
 function statusBadgeClass(status: string): string {
   if (status === "active") return styles.badgeActive;
   if (status === "at_risk") return styles.badgeAtRisk;
   if (status === "missed") return styles.badgeMissed;
-  return styles.badgeActive;
+  if (status === "completed") return styles.badgeCompleted;
+  return styles.badgeArchived;
+}
+
+function isActiveGoal(status: GoalStatus): boolean {
+  return status === "active" || status === "at_risk" || status === "missed";
+}
+
+function progressPercent(currentValue: number | undefined, targetValue: number): number {
+  if (currentValue === undefined || targetValue <= 0) return 0;
+  return Math.min(100, Math.round((currentValue / targetValue) * 100));
 }
 
 export function GoalsProgressPage() {
@@ -168,6 +195,61 @@ export function GoalsProgressPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  const activeGoals = goals.filter((g) => isActiveGoal(g.status));
+  const completedGoals = goals.filter((g) => !isActiveGoal(g.status));
+
+  function renderGoalCard(goal: GoalRow) {
+    const pct = progressPercent(goal.currentValue, goal.targetValue);
+    const hasProgress = goal.currentValue !== undefined;
+
+    return (
+      <li key={goal.id} className={`${styles.goalCard} ${!isActiveGoal(goal.status) ? styles.goalCardMuted : ""}`}>
+        <div className={styles.goalHeader}>
+          <span className={styles.goalIcon} aria-hidden="true">
+            {goalTypeIcon(goal.goalType)}
+          </span>
+          <div className={styles.goalHeaderText}>
+            <span className={`${styles.statusBadge} ${statusBadgeClass(goal.status)}`}>
+              {STATUS_LABEL[goal.status] ?? goal.status}
+            </span>
+            <h3>{goalTypeLabel(goal.goalType)}</h3>
+          </div>
+        </div>
+        <p className={styles.goalMeta}>
+          {goal.cadence === "daily" ? "Daily goal" : "Weekly goal"}
+          {goal.startDate ? ` • Started ${goal.startDate}` : ""}
+        </p>
+        {hasProgress ? (
+          <>
+            <p className={styles.goalProgress}>
+              {goal.currentValue} {goal.targetUnit} / {goal.targetValue} {goal.targetUnit}
+            </p>
+            <div
+              className={styles.progressBarTrack}
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${goalTypeLabel(goal.goalType)} progress: ${pct}%`}
+            >
+              <div
+                className={`${styles.progressBarFill} ${statusBadgeClass(goal.status) === styles.badgeActive ? styles.progressFillOnTrack : statusBadgeClass(goal.status) === styles.badgeAtRisk ? styles.progressFillAtRisk : styles.progressFillMissed}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </>
+        ) : (
+          <p className={styles.goalTarget}>
+            Target: {goal.targetValue} {goal.targetUnit}
+          </p>
+        )}
+        {goal.weekOverWeekChange && (
+          <p className={styles.weekOverWeek}>{goal.weekOverWeekChange}</p>
+        )}
+      </li>
+    );
   }
 
   return (
@@ -308,25 +390,21 @@ export function GoalsProgressPage() {
             No goals yet. Create your first goal to start tracking your progress.
           </p>
         ) : (
-          <ul className={styles.goalsList}>
-            {goals.map((goal) => (
-              <li key={goal.id} className={styles.goalCard}>
-                <div className={styles.goalHeader}>
-                  <span className={`${styles.statusBadge} ${statusBadgeClass(goal.status)}`}>
-                    {STATUS_LABEL[goal.status] ?? goal.status}
-                  </span>
-                  <h3>{goalTypeLabel(goal.goalType)}</h3>
-                </div>
-                <p className={styles.goalMeta}>
-                  {goal.cadence === "daily" ? "Daily goal" : "Weekly goal"}
-                  {goal.startDate ? ` • Started ${goal.startDate}` : ""}
-                </p>
-                <p className={styles.goalTarget}>
-                  Target: {goal.targetValue} {goal.targetUnit}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <>
+            {activeGoals.length > 0 && (
+              <ul className={styles.goalsList}>
+                {activeGoals.map(renderGoalCard)}
+              </ul>
+            )}
+            {completedGoals.length > 0 && (
+              <section aria-labelledby="completed-goals-heading" className={styles.completedSection}>
+                <h2 id="completed-goals-heading" className={styles.completedHeading}>Completed &amp; Archived</h2>
+                <ul className={styles.goalsList}>
+                  {completedGoals.map(renderGoalCard)}
+                </ul>
+              </section>
+            )}
+          </>
         )}
       </section>
 
