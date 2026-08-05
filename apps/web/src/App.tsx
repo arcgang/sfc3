@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { Footer } from "./components/Footer.js";
 import { Layout } from "./components/Layout.js";
+import { AlertsPage } from "./pages/AlertsPage.js";
 import { ContactPage } from "./pages/ContactPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { GoalsProgressPage } from "./pages/GoalsProgressPage.js";
@@ -48,6 +49,7 @@ export function App() {
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/goals" element={<GoalsProgressPage />} />
+          <Route path="/alerts" element={<AlertsPage />} />
         </Route>
         <Route path="*" element={<Placeholder />} />
       </Routes>
