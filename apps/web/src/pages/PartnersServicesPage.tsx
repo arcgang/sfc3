@@ -129,7 +129,7 @@ export function PartnersServicesPage() {
                 <span>{service.category}</span>
                 {service.premiumRequired && <span>Premium</span>}
                 <p>{service.description}</p>
-                <button type="button">Learn More</button>
+                <a href="#">Learn More</a>
               </li>
             ))}
           </ul>

@@ -244,10 +244,10 @@ test("Stress Relief card shows correct description", () => {
 
 // ── Service cards — Learn More links ─────────────────────────────────────────
 
-test("each service card renders a 'Learn More' button (8 total)", () => {
+test("each service card renders a 'Learn More' link (8 total)", () => {
   const { getAllByRole } = renderPartnersServicesPage();
-  const learnMoreButtons = getAllByRole("button", { name: "Learn More" });
-  expect(learnMoreButtons.length).toBe(8);
+  const learnMoreLinks = getAllByRole("link", { name: "Learn More" });
+  expect(learnMoreLinks.length).toBe(8);
 });
 
 // ── Premium badges ────────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ test("each service card renders a 'Learn More' button (8 total)", () => {
 test("premium badges are shown on premium services (FitPro Training, SleepWell Program, RunCoach)", () => {
   const { getAllByText } = renderPartnersServicesPage();
   // Design shows Premium badges on FitPro Training, SleepWell Program, RunCoach
-  expect(getAllByText("Premium").length).toBeGreaterThanOrEqual(3);
+  expect(getAllByText("Premium").length).toBe(3);
 });
 
 // ── Service Booking Coming Soon section ───────────────────────────────────────
