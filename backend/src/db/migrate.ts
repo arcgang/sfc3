@@ -5,7 +5,9 @@ import { getDatabase } from "./connection.js";
 export function migrate(migrationsDir: string): void {
   const db = getDatabase();
 
-  // Ensure the tracking table exists so we can skip already-applied migrations
+  db.pragma("foreign_keys = ON");
+
+  // Create the migrations tracking table on first run
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
       filename TEXT NOT NULL PRIMARY KEY,
@@ -17,15 +19,15 @@ export function migrate(migrationsDir: string): void {
     return;
   }
 
-  const files = readdirSync(migrationsDir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
-
   const applied = new Set(
     (db.prepare("SELECT filename FROM _migrations").all() as { filename: string }[]).map(
       (r) => r.filename,
     ),
   );
+
+  const files = readdirSync(migrationsDir)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
 
   for (const file of files) {
     if (applied.has(file)) {
