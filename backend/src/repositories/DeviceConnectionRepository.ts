@@ -52,7 +52,9 @@ export class DeviceConnectionRepository {
          VALUES (?, ?, ?, 'connected', ?, ?, ?, NULL, ?, ?)`,
       )
       .run(id, userId, deviceType, provider, now, providerAccountRef, now, now);
-    return this.findByUserAndType(userId, deviceType) as DeviceConnectionRow;
+    const row = this.findByUserAndType(userId, deviceType);
+    if (!row) throw new Error(`device_connections row not found after insert for user ${userId}`);
+    return row;
   }
 
   updateStatus(
@@ -65,13 +67,15 @@ export class DeviceConnectionRepository {
         `UPDATE device_connections SET connection_status = ?, updated_at = ? WHERE id = ?`,
       )
       .run(status, now, id);
-    return this.db
+    const row = this.db
       .prepare(
         `SELECT id, user_id, device_type, connection_status, provider,
                 device_name, battery, connected_since,
                 provider_account_ref, last_sync_at, created_at, updated_at
          FROM device_connections WHERE id = ?`,
       )
-      .get(id) as DeviceConnectionRow;
+      .get(id) as DeviceConnectionRow | undefined;
+    if (!row) throw new Error(`device_connections row not found after update for id ${id}`);
+    return row;
   }
 }

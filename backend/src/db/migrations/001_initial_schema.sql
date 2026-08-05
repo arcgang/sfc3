@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS device_connections (
                         CHECK (device_type IN ('smartwatch','smart_scale')),
   connection_status TEXT NOT NULL
                         CHECK (connection_status IN ('connected','disconnected','error')),
-  last_sync_at      TEXT,
+  last_synced_at    TEXT,
   created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   UNIQUE (user_id, device_type)
