@@ -12,6 +12,7 @@ export interface DeviceConnection {
   provider: string;
   connectionStatus: ConnectionStatus;
   lastSyncAt: string | null;
+  lastSuccessfulSyncAt: string | null;
   batteryLevel: string | null;
   connectedSince: string;
   createdAt: string;
@@ -26,6 +27,7 @@ interface RawRow {
   provider: string;
   connection_status: string;
   last_sync_at: string | null;
+  last_successful_sync_at: string | null;
   battery_level: string | null;
   connected_since: string;
   created_at: string;
@@ -42,7 +44,8 @@ export class DeviceConnectionDao {
     const row = this.db
       .prepare(
         `SELECT id, user_id, device_type, device_name, provider, connection_status,
-                last_sync_at, battery_level, connected_since, created_at, updated_at
+                last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                created_at, updated_at
            FROM device_connections
           WHERE user_id = ? AND device_type = ?`,
       )
@@ -52,11 +55,26 @@ export class DeviceConnectionDao {
     return this.mapRow(row);
   }
 
+  findById(id: string): DeviceConnection | undefined {
+    const row = this.db
+      .prepare(
+        `SELECT id, user_id, device_type, device_name, provider, connection_status,
+                last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                created_at, updated_at
+           FROM device_connections WHERE id = ?`,
+      )
+      .get(id) as RawRow | undefined;
+
+    if (!row) return undefined;
+    return this.mapRow(row);
+  }
+
   findAllByUser(userId: string): DeviceConnection[] {
     const rows = this.db
       .prepare(
         `SELECT id, user_id, device_type, device_name, provider, connection_status,
-                last_sync_at, battery_level, connected_since, created_at, updated_at
+                last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                created_at, updated_at
            FROM device_connections
           WHERE user_id = ?
           ORDER BY created_at ASC`,
@@ -82,8 +100,9 @@ export class DeviceConnectionDao {
       .prepare(
         `INSERT INTO device_connections
            (id, user_id, device_type, device_name, provider, connection_status,
-            last_sync_at, battery_level, connected_since, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'connected', NULL, ?, ?, ?, ?)`,
+            last_sync_at, last_successful_sync_at, battery_level, connected_since,
+            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'connected', NULL, NULL, ?, ?, ?, ?)`,
       )
       .run(id, params.userId, params.deviceType, deviceName, provider, batteryLevel, now, now, now);
 
@@ -105,18 +124,22 @@ export class DeviceConnectionDao {
       )
       .run(status, now, id);
 
-    const row = this.db
-      .prepare(
-        `SELECT id, user_id, device_type, device_name, provider, connection_status,
-                last_sync_at, battery_level, connected_since, created_at, updated_at
-           FROM device_connections WHERE id = ?`,
-      )
-      .get(id) as RawRow | undefined;
-
-    if (!row) {
+    const conn = this.findById(id);
+    if (!conn) {
       throw new Error(`device_connections UPDATE found no row for id=${id}`);
     }
-    return this.mapRow(row);
+    return conn;
+  }
+
+  updateLastSuccessfulSyncAt(id: string, syncedAt: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE device_connections
+            SET last_successful_sync_at = ?, last_sync_at = ?, updated_at = ?
+          WHERE id = ?`,
+      )
+      .run(syncedAt, syncedAt, now, id);
   }
 
   private mapRow(row: RawRow): DeviceConnection {
@@ -128,6 +151,7 @@ export class DeviceConnectionDao {
       provider: row.provider,
       connectionStatus: row.connection_status as ConnectionStatus,
       lastSyncAt: row.last_sync_at,
+      lastSuccessfulSyncAt: row.last_successful_sync_at,
       batteryLevel: row.battery_level,
       connectedSince: row.connected_since,
       createdAt: row.created_at,

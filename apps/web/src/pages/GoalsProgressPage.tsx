@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiFetch } from "../api.js";
 import styles from "./GoalsProgressPage.module.css";
 
@@ -12,11 +12,11 @@ type Cadence = "daily" | "weekly";
 
 interface GoalRow {
   id: string;
-  goal_type: GoalType;
-  target_value: number;
-  target_unit: string;
+  goalType: GoalType;
+  targetValue: number;
+  targetUnit: string;
   cadence: Cadence;
-  start_date: string;
+  startDate: string;
   status: "active" | "completed" | "abandoned";
 }
 
@@ -58,6 +58,8 @@ const GOAL_TYPE_CADENCE: Record<GoalType, Cadence> = {
 
 const STATUS_LABEL: Record<string, string> = {
   active: "On Track",
+  at_risk: "At Risk",
+  missed: "Missed",
 };
 
 function goalTypeLabel(type: GoalType): string {
@@ -71,10 +73,10 @@ function statusBadgeClass(status: string): string {
   return styles.badgeActive;
 }
 
-const INITIAL_GOALS: GoalRow[] = [];
-
 export function GoalsProgressPage() {
-  const [goals, setGoals] = useState<GoalRow[]>(INITIAL_GOALS);
+  const [goals, setGoals] = useState<GoalRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const [goalType, setGoalType] = useState<GoalType>("steps_daily");
@@ -85,6 +87,30 @@ export function GoalsProgressPage() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    apiFetch<{ data: { goals: GoalRow[] } }>("/goals")
+      .then((res) => {
+        if (!cancelled) {
+          setGoals(res.data.goals);
+          setLoading(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load goals.",
+          );
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function handleGoalTypeChange(type: GoalType) {
     setGoalType(type);
@@ -113,11 +139,11 @@ export function GoalsProgressPage() {
 
     setSubmitting(true);
     try {
-      const result = await apiFetch<{ data: GoalRow }>("/goals", {
+      const result = await apiFetch<{ data: { goal: GoalRow } }>("/goals", {
         method: "POST",
         body: JSON.stringify(body),
       });
-      setGoals((prev) => [...prev, result.data]);
+      setGoals((prev) => [result.data.goal, ...prev]);
       setShowForm(false);
       setTargetValue("");
       setStartDate("");
@@ -250,7 +276,34 @@ export function GoalsProgressPage() {
 
       <section aria-labelledby="goals-list-heading">
         <h2 id="goals-list-heading" className="sr-only">Your Goals</h2>
-        {goals.length === 0 ? (
+        {loading ? (
+          <p className={styles.loadingState}>Loading goals…</p>
+        ) : loadError ? (
+          <p role="alert" className={styles.errorState}>
+            {loadError}{" "}
+            <button
+              type="button"
+              className={styles.retryButton}
+              onClick={() => {
+                setLoadError(null);
+                setLoading(true);
+                apiFetch<{ data: { goals: GoalRow[] } }>("/goals")
+                  .then((res) => {
+                    setGoals(res.data.goals);
+                    setLoading(false);
+                  })
+                  .catch((err: unknown) => {
+                    setLoadError(
+                      err instanceof Error ? err.message : "Failed to load goals.",
+                    );
+                    setLoading(false);
+                  });
+              }}
+            >
+              Retry
+            </button>
+          </p>
+        ) : goals.length === 0 ? (
           <p className={styles.emptyState}>
             No goals yet. Create your first goal to start tracking your progress.
           </p>
@@ -262,14 +315,14 @@ export function GoalsProgressPage() {
                   <span className={`${styles.statusBadge} ${statusBadgeClass(goal.status)}`}>
                     {STATUS_LABEL[goal.status] ?? goal.status}
                   </span>
-                  <h3>{goalTypeLabel(goal.goal_type)}</h3>
+                  <h3>{goalTypeLabel(goal.goalType)}</h3>
                 </div>
                 <p className={styles.goalMeta}>
                   {goal.cadence === "daily" ? "Daily goal" : "Weekly goal"}
-                  {goal.start_date ? ` • Started ${goal.start_date}` : ""}
+                  {goal.startDate ? ` • Started ${goal.startDate}` : ""}
                 </p>
                 <p className={styles.goalTarget}>
-                  Target: {goal.target_value} {goal.target_unit}
+                  Target: {goal.targetValue} {goal.targetUnit}
                 </p>
               </li>
             ))}

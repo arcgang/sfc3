@@ -1,4 +1,5 @@
 .page {
+<<<<<<< HEAD
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -19,10 +20,16 @@
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--color-text-primary);
+=======
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-white);
+  min-height: 100vh;
+>>>>>>> origin/main
 }
 
 .main {
   max-width: 48rem;
+<<<<<<< HEAD
   width: 100%;
   margin: 0 auto;
   padding: 2rem 1.5rem;
@@ -77,10 +84,56 @@
   margin: 0;
   font-size: 0.875rem;
   color: #6b7280;
+=======
+  margin-inline: auto;
+  padding: var(--space-2xl) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.heading {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.subheading {
+  color: var(--color-text-secondary);
+  font-size: 1.125rem;
+  margin: 0;
+}
+
+/* ── Device type tiles ──────────────────────────────────────────── */
+.deviceTypesSection {
+  display: block;
+}
+
+.deviceTypeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-md);
+}
+
+.deviceTypeCard {
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+>>>>>>> origin/main
 }
 
 .deviceEmoji {
   font-size: 2rem;
+<<<<<<< HEAD
 }
 
 .deviceTypeButton {
@@ -90,11 +143,38 @@
   color: #ffffff;
   border: none;
   border-radius: 0.375rem;
+=======
+  line-height: 1;
+}
+
+.deviceTypeName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.deviceTypeDesc {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  margin: 0;
+  flex: 1;
+}
+
+.connectTypeBtn {
+  margin-top: var(--space-xs);
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--color-bg-teal);
+  border-radius: 0.25rem;
+  background-color: var(--color-bg-white);
+  color: var(--color-bg-teal);
+>>>>>>> origin/main
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
 }
 
+<<<<<<< HEAD
 .deviceTypeButton:hover {
   background-color: var(--color-accent-hover);
 }
@@ -135,10 +215,55 @@
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+=======
+.connectTypeBtn:hover {
+  background-color: var(--color-bg-teal);
+  color: var(--color-text-on-teal);
+}
+
+.connectTypeBtn:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Provider tiles ─────────────────────────────────────────────── */
+.providerSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.providerHeading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.providerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-sm);
+}
+
+.providerCard {
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+>>>>>>> origin/main
   text-align: center;
 }
 
 .providerEmoji {
+<<<<<<< HEAD
   font-size: 1.75rem;
 }
 
@@ -155,19 +280,52 @@
   border: none;
   border-radius: 0.375rem;
   font-size: 0.875rem;
+=======
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.providerLabel {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+}
+
+.connectBtn {
+  padding: 0.375rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  background-color: var(--color-bg-teal);
+  color: var(--color-text-on-teal);
+  font-size: 0.9375rem;
+>>>>>>> origin/main
   font-weight: 600;
   cursor: pointer;
 }
 
+<<<<<<< HEAD
 .connectButton:hover:not(:disabled) {
   background-color: var(--color-accent-hover);
 }
 
 .connectButton:disabled {
+=======
+.connectBtn:hover:not(:disabled) {
+  background-color: var(--color-accent);
+}
+
+.connectBtn:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.connectBtn:disabled {
+>>>>>>> origin/main
   opacity: 0.6;
   cursor: not-allowed;
 }
 
+<<<<<<< HEAD
 .connectButton:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
@@ -185,10 +343,46 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-text-primary);
+=======
+/* ── Connection result messages ─────────────────────────────────── */
+.successMsg {
+  color: #166534;
+  background-color: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.25rem;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.failureMsg {
+  color: #991b1b;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 0.25rem;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ── Connection steps ───────────────────────────────────────────── */
+.stepsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.stepsHeading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+>>>>>>> origin/main
 }
 
 .stepsList {
   margin: 0;
+<<<<<<< HEAD
   padding-left: 1.25rem;
   display: flex;
   flex-direction: column;
@@ -269,6 +463,76 @@
   .deviceTypeButton,
   .connectButton,
   .continueButton {
+=======
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.step {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* ── Pairing nav ────────────────────────────────────────────────── */
+.pairingNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.skipLink {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  font-size: 0.9375rem;
+}
+
+.skipLink:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.continueLink {
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-bg-teal);
+  color: var(--color-text-on-teal);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.continueLink:hover {
+  background-color: var(--color-accent);
+}
+
+.continueLink:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Narrow viewports (320 px and up) ───────────────────────────── */
+@media (max-width: 480px) {
+  .main {
+    padding: var(--space-xl) var(--space-sm);
+    gap: var(--space-lg);
+  }
+
+  .pairingNav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .connectTypeBtn,
+  .connectBtn,
+  .continueLink {
+>>>>>>> origin/main
     transition: none;
   }
 }
