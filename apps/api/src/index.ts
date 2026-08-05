@@ -1,38 +1,35 @@
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
-import express, { type Request, type Response } from "express";
-import { z } from "zod";
-import { health } from "./health.js";
+import express from "express";
 import { buildConfig } from "./config.js";
-import { validateBody } from "./middleware/validate.js";
 import { correlationIdMiddleware } from "./middleware/correlationId.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
 import { authRouter } from "./api/authController.js";
 import { goalsRouter } from "./api/goalsController.js";
+import { devicesRouter } from "./api/devicesRoutes.js";
+import { alertsRouter } from "./api/alertsRoutes.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
 const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "db", "migrations");
-
 migrate(migrationsDir);
-const app = express();
 
+const app = express();
 app.use(express.json());
 app.use(correlationIdMiddleware);
 
 app.get("/health", (_req, res) => {
-  res.json(health());
+  res.json({ status: "ok" });
 });
 
 app.use("/api/v1/auth", authRouter);
 
 const requireAuth = authMiddleware(config.jwtSecret);
 
-app.get("/api/v1/me", requireAuth, (_req, res) => {
-  res.json({ user: res.locals["user"] });
-});
+app.use("/api/v1/devices", requireAuth, devicesRouter);
+app.use("/api/v1/alerts", requireAuth, alertsRouter);
 
 const echoSchema = z.object({
   message: z.string().min(1),

@@ -59,10 +59,15 @@ describe("schema: all 11 tables created", () => {
     for (const table of ALL_TABLES) {
       expect(names).toContain(table);
     }
+<<<<<<< HEAD:apps/api/src/db/schema.test.ts
     // Exactly 11 domain tables (excluding sqlite_ system tables and _migrations infra table)
     const userTables = names.filter(
       (n) => !n.startsWith("sqlite_") && n !== "_migrations",
     );
+=======
+    // Exactly 11 domain tables (no extras; _migrations is infrastructure, not a domain table)
+    const userTables = names.filter((n) => !n.startsWith("sqlite_") && !n.startsWith("_"));
+>>>>>>> main:backend/src/db/schema.test.ts
     expect(userTables).toHaveLength(11);
 
     delete process.env.DB_PATH;

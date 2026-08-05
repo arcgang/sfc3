@@ -42,7 +42,11 @@ export class GoalRepository {
         `SELECT id, user_id, goal_type, target_value, target_unit, cadence, start_date, status, created_at, updated_at
            FROM goals WHERE id = @id`,
       )
-      .get({ id: params.id }) as GoalRow;
+      .get({ id: params.id }) as GoalRow | undefined;
+
+    if (row === undefined) {
+      throw new Error(`Goal insert succeeded but row ${params.id} was not found on re-read`);
+    }
 
     return row;
   }

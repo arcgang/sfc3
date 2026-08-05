@@ -1,5 +1,5 @@
 -- 001_initial_schema.sql
--- Creates all 11 tables in dependency order with CHECK constraints,
+-- Creates all required tables in dependency order with CHECK constraints,
 -- foreign keys, unique constraints, and indexes.
 -- Uses IF NOT EXISTS throughout so re-running is safe.
 
@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            TEXT        NOT NULL PRIMARY KEY,
   email         TEXT        NOT NULL UNIQUE,
   password_hash TEXT        NOT NULL,
+  full_name     TEXT        NOT NULL DEFAULT '',
   account_status TEXT       NOT NULL
                             CHECK (account_status IN ('active','locked','pending_verification')),
   created_at    TEXT        NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
@@ -26,15 +27,20 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- 3. device_connections  (user_id → users.id)
 CREATE TABLE IF NOT EXISTS device_connections (
-  id                TEXT NOT NULL PRIMARY KEY,
-  user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  device_type       TEXT NOT NULL
-                        CHECK (device_type IN ('smartwatch','smart_scale')),
-  connection_status TEXT NOT NULL
-                        CHECK (connection_status IN ('connected','disconnected','error')),
-  last_synced_at    TEXT,
-  created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-  updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  id                  TEXT NOT NULL PRIMARY KEY,
+  user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_type         TEXT NOT NULL
+                          CHECK (device_type IN ('smartwatch','smart_scale')),
+  device_name         TEXT NOT NULL DEFAULT '',
+  provider            TEXT NOT NULL DEFAULT '',
+  connection_status   TEXT NOT NULL DEFAULT 'pending'
+                          CHECK (connection_status IN ('pending','connected','disconnected','error')),
+  last_sync_at        TEXT,
+  battery_level       TEXT,
+  connected_since     TEXT NOT NULL DEFAULT '',
+  provider_account_ref TEXT,
+  created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   UNIQUE (user_id, device_type)
 );
 
@@ -84,23 +90,25 @@ CREATE INDEX IF NOT EXISTS idx_health_records_device_connection
 
 -- 6. goals  (user_id → users.id)
 CREATE TABLE IF NOT EXISTS goals (
-  id         TEXT    NOT NULL PRIMARY KEY,
-  user_id    TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  goal_type  TEXT    NOT NULL
-                     CHECK (goal_type IN ('steps_daily','sleep_minutes_daily','weight_target','active_minutes_weekly')),
-  cadence    TEXT    NOT NULL
-                     CHECK (cadence IN ('daily','weekly')),
-  status     TEXT    NOT NULL
-                     CHECK (status IN ('active','on_track','behind','completed','archived')),
-  target     NUMERIC,
-  created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-  updated_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+  id           TEXT    NOT NULL PRIMARY KEY,
+  user_id      TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  goal_type    TEXT    NOT NULL
+                       CHECK (goal_type IN ('steps_daily','sleep_minutes_daily','weight_target','active_minutes_weekly')),
+  cadence      TEXT    NOT NULL
+                       CHECK (cadence IN ('daily','weekly')),
+  status       TEXT    NOT NULL
+                       CHECK (status IN ('active','on_track','behind','completed','archived')),
+  target_value REAL    NOT NULL DEFAULT 0,
+  target_unit  TEXT    NOT NULL DEFAULT '',
+  start_date   TEXT    NOT NULL DEFAULT '',
+  created_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_goals_user_status
   ON goals(user_id, status);
 
--- 7. alerts  (user_id → users.id, goal_id → goals.id nullable, health_record_id → health_records.id nullable)
+-- 7. alerts  (user_id → users.id)
 CREATE TABLE IF NOT EXISTS alerts (
   id               TEXT NOT NULL PRIMARY KEY,
   user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -119,13 +127,7 @@ CREATE TABLE IF NOT EXISTS alerts (
 CREATE INDEX IF NOT EXISTS idx_alerts_user_priority_ack
   ON alerts(user_id, priority, acknowledged_at);
 
-CREATE INDEX IF NOT EXISTS idx_alerts_goal
-  ON alerts(goal_id);
-
-CREATE INDEX IF NOT EXISTS idx_alerts_health_record
-  ON alerts(health_record_id);
-
--- 8. insights  (user_id → users.id, goal_id → goals.id nullable)
+-- 8. insights  (user_id → users.id)
 CREATE TABLE IF NOT EXISTS insights (
   id             TEXT NOT NULL PRIMARY KEY,
   user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -142,19 +144,18 @@ CREATE TABLE IF NOT EXISTS insights (
 CREATE INDEX IF NOT EXISTS idx_insights_user_created
   ON insights(user_id, created_at);
 
-CREATE INDEX IF NOT EXISTS idx_insights_goal
-  ON insights(goal_id);
-
 -- 9. engagement_events  (user_id → users.id)
 CREATE TABLE IF NOT EXISTS engagement_events (
-  id         TEXT NOT NULL PRIMARY KEY,
-  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  event_type TEXT NOT NULL
-                 CHECK (event_type IN ('login','dashboard_view','goal_create','goal_view','alert_view','device_sync','nudge_dismiss')),
-  occurred_at TEXT NOT NULL,
-  metadata    TEXT,
-  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+  id                TEXT NOT NULL PRIMARY KEY,
+  user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_type        TEXT NOT NULL
+                        CHECK (event_type IN ('login','dashboard_view','goal_create','goal_view','alert_view','device_sync','nudge_dismiss')),
+  occurred_at       TEXT NOT NULL,
+  event_date        TEXT NOT NULL DEFAULT '',
+  event_timestamp   TEXT NOT NULL DEFAULT '',
+  event_context_json TEXT NOT NULL DEFAULT '{}',
+  created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_engagement_events_user_date
@@ -162,13 +163,17 @@ CREATE INDEX IF NOT EXISTS idx_engagement_events_user_date
 
 -- 10. partner_services  (no FKs)
 CREATE TABLE IF NOT EXISTS partner_services (
-  id                 TEXT NOT NULL PRIMARY KEY,
-  name               TEXT NOT NULL,
-  marketplace_status TEXT NOT NULL
-                         CHECK (marketplace_status IN ('deferred','future_ready')),
+  id                 TEXT    NOT NULL PRIMARY KEY,
+  name               TEXT    NOT NULL,
   description        TEXT,
-  created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-  updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+  category           TEXT    NOT NULL DEFAULT '',
+  short_description  TEXT    NOT NULL DEFAULT '',
+  premium_required   INTEGER NOT NULL DEFAULT 0,
+  marketplace_status TEXT    NOT NULL
+                             CHECK (marketplace_status IN ('deferred','future_ready')),
+  revenue_model_ref  TEXT,
+  created_at         TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at         TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
 -- 11. privacy_requests  (user_id → users.id)

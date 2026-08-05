@@ -1,12 +1,12 @@
 import type { Request, Response, NextFunction } from "express";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 
 export function correlationIdMiddleware(
   _req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
-  const correlationId = uuidv4();
+  const correlationId = randomUUID();
   res.locals["correlationId"] = correlationId;
   res.setHeader("X-Correlation-Id", correlationId);
   next();

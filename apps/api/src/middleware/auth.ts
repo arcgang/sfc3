@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import type { ErrorResponse } from "../types/errorResponse.js";
+import type { ErrorResponse } from "../types/errors.js";
 
 export function authMiddleware(
   jwtSecret: string,
@@ -33,7 +33,7 @@ export function authMiddleware(
 
 function rejectUnauthorized(res: Response, reason: string): void {
   console.log({
-    event: "auth.login_attempt",
+    event: "auth.session_attempt",
     success: false,
     reason,
     correlationId: res.locals["correlationId"] as string | undefined,

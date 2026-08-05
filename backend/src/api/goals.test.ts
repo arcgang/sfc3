@@ -37,8 +37,8 @@ async function buildApp() {
 
   // Seed a user so FK constraints pass
   db.prepare(
-    "INSERT INTO users (id, email, full_name, password_hash, account_status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
-  ).run(USER_ID, "goals-test@example.com", "Goals Test User", "hashed");
+    "INSERT INTO users (id, email, password_hash, full_name, account_status) VALUES (?, ?, ?, ?, 'active')",
+  ).run(USER_ID, "goals-test@example.com", "hashed", "Test User");
 
   const { correlationIdMiddleware } = await import(
     "../middleware/correlationId.js"
@@ -522,5 +522,70 @@ describe("POST /api/v1/goals — validation: invalid values", () => {
       res.body.error.details as Array<{ field: string }>
     ).map((d) => d.field);
     expect(fields).toContain("cadence");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Validation: cadence inconsistent with goalType
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/goals — validation: cadence inconsistent with goalType", () => {
+  it("returns HTTP 422 for steps_daily with cadence='weekly'", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "steps_daily",
+        targetValue: 10000,
+        targetUnit: "steps",
+        cadence: "weekly",
+      });
+    expect(res.status).toBe(422);
+  });
+
+  it("error.details contains field='cadence' for steps_daily with cadence='weekly'", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "steps_daily",
+        targetValue: 10000,
+        targetUnit: "steps",
+        cadence: "weekly",
+      });
+    const fields = (
+      res.body.error.details as Array<{ field: string }>
+    ).map((d) => d.field);
+    expect(fields).toContain("cadence");
+  });
+
+  it("returns HTTP 422 for active_minutes_weekly with cadence='daily'", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "active_minutes_weekly",
+        targetValue: 150,
+        targetUnit: "minutes",
+        cadence: "daily",
+      });
+    expect(res.status).toBe(422);
+  });
+
+  it("accepts weight_target with either daily or weekly cadence", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "weight_target",
+        targetValue: 70,
+        targetUnit: "kg",
+        cadence: "weekly",
+      });
+    expect(res.status).toBe(201);
   });
 });

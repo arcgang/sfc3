@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { App } from "../App";
 import { HomePage } from "./HomePage";
 
 function renderHomePage() {
@@ -156,26 +157,86 @@ test("trust section intro copy states data is never sold to third parties", () =
   screen.getByText(/never sell your.*health.*data.*third parties/i);
 });
 
-// ── Footer ────────────────────────────────────────────────────────────────────
+// ── Footer (tested via App to avoid duplication with the persistent Footer component) ──────────
+
+function renderHomePageViaApp() {
+  return render(
+    <MemoryRouter initialEntries={["/"]}>
+      <App />
+    </MemoryRouter>,
+  );
+}
 
 test("footer contains a 'Privacy Policy' link", () => {
-  renderHomePage();
+  renderHomePageViaApp();
   screen.getByRole("link", { name: "Privacy Policy" });
 });
 
 test("footer 'Privacy Policy' link points to /privacy", () => {
-  renderHomePage();
+  renderHomePageViaApp();
   const link = screen.getByRole("link", { name: "Privacy Policy" });
   expect(link.getAttribute("href")).toBe("/privacy");
 });
 
 test("footer contains a 'Terms of Service' link", () => {
-  renderHomePage();
+  renderHomePageViaApp();
   screen.getByRole("link", { name: "Terms of Service" });
 });
 
 test("footer 'Terms of Service' link points to /terms", () => {
-  renderHomePage();
+  renderHomePageViaApp();
   const link = screen.getByRole("link", { name: "Terms of Service" });
   expect(link.getAttribute("href")).toBe("/terms");
+});
+
+// ── LCP structural requirements ───────────────────────────────────────────────
+
+test("hero h1 renders as plain text with no image descendants", () => {
+  renderHomePage();
+  const h1 = screen.getByRole("heading", { level: 1 });
+  expect(h1.querySelectorAll("img").length).toBe(0);
+});
+
+test("LCP element: hero heading contains the primary headline text", () => {
+  renderHomePage();
+  const h1 = screen.getByRole("heading", {
+    name: /one place for your complete wellness picture/i,
+    level: 1,
+  });
+  expect(h1.textContent).toMatch(/one place for your complete wellness picture/i);
+});
+
+test("page renders no img elements with external http URLs (LCP: no render-blocking external images)", () => {
+  const { container } = renderHomePage();
+  const imgs = container.querySelectorAll("img[src]");
+  const externalImgs = Array.from(imgs).filter((img) =>
+    /^https?:\/\//i.test(img.getAttribute("src") ?? ""),
+  );
+  expect(externalImgs.length).toBe(0);
+});
+
+// ── WCAG 2.1 AA contrast — interactive element accessibility ─────────────────
+
+test("Log In nav link has an accessible name for screen readers", () => {
+  renderHomePage();
+  const logIn = screen.getByRole("link", { name: "Log In" });
+  expect(logIn.textContent).toBe("Log In");
+});
+
+test("Get Started Free CTA link has an accessible name for screen readers", () => {
+  renderHomePage();
+  const cta = screen.getByRole("link", { name: "Get Started Free" });
+  expect(cta.textContent).toBe("Get Started Free");
+});
+
+test("nav links point to expected routes (Log In → /login)", () => {
+  renderHomePage();
+  const logIn = screen.getByRole("link", { name: "Log In" });
+  expect(logIn.getAttribute("href")).toBe("/login");
+});
+
+test("Get Started Free link points to /register", () => {
+  renderHomePage();
+  const cta = screen.getByRole("link", { name: "Get Started Free" });
+  expect(cta.getAttribute("href")).toBe("/register");
 });

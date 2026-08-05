@@ -5,7 +5,7 @@ export function errorHandler(
   err: unknown,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): void {
   const correlationId =
     typeof res.locals["correlationId"] === "string"

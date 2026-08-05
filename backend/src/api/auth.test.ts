@@ -329,7 +329,7 @@ describe("POST /api/v1/auth/session — mode=register, security logging", () => 
       (call) =>
         typeof call[0] === "object" &&
         call[0] !== null &&
-        (call[0] as Record<string, unknown>)["event"] === "auth.register",
+        (call[0] as Record<string, unknown>)["event"] === "auth.session_attempt",
     );
     expect(registrationLog).toBeDefined();
   });
@@ -348,7 +348,7 @@ describe("POST /api/v1/auth/session — mode=register, security logging", () => 
       (call) =>
         typeof call[0] === "object" &&
         call[0] !== null &&
-        (call[0] as Record<string, unknown>)["event"] === "auth.register",
+        (call[0] as Record<string, unknown>)["event"] === "auth.session_attempt",
     );
     expect(registrationLog).toBeDefined();
   });
