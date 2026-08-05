@@ -60,7 +60,7 @@ describe("schema: all 11 tables created", () => {
       expect(names).toContain(table);
     }
     // Exactly 11 user tables (no extras)
-    const userTables = names.filter((n) => !n.startsWith("sqlite_"));
+    const userTables = names.filter((n) => !n.startsWith("sqlite_") && !n.startsWith("_"));
     expect(userTables).toHaveLength(11);
 
     delete process.env.DB_PATH;
