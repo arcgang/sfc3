@@ -1,4 +1,4 @@
-import { render, screen, within, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi, beforeEach, afterEach } from "vitest";
 import { App } from "../App.js";
@@ -302,4 +302,82 @@ test("sidebar nav renders 'Log out' link", async () => {
   renderPage();
   await screen.findByRole("heading", { name: "Connected Devices", level: 1 });
   screen.getByRole("link", { name: "Log out" });
+});
+
+// ── Sync Now — success ────────────────────────────────────────────────────────
+
+test("clicking 'Sync Now' calls POST /devices/:id/sync with the device id 'device-001'", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE]));
+  mockApiFetch.mockResolvedValueOnce({
+    data: { syncRunId: "run-1", syncStatus: "completed", recordsWritten: 5, recordsDiscarded: 0 },
+  });
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Sync Now" }));
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith("/devices/device-001/sync", { method: "POST" });
+  });
+});
+
+test("'Sync Now' button shows 'Syncing…' while the request is in-flight", async () => {
+  let resolveSyncFetch!: (v: unknown) => void;
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE]));
+  mockApiFetch.mockReturnValueOnce(new Promise((r) => { resolveSyncFetch = r; }));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Sync Now" }));
+  expect(within(card).getByRole("button", { name: "Syncing…" })).toBeTruthy();
+  resolveSyncFetch({
+    data: { syncRunId: "run-1", syncStatus: "completed", recordsWritten: 0, recordsDiscarded: 0 },
+  });
+  await waitFor(() => expect(within(card).getByRole("button", { name: "Sync Now" })).toBeTruthy());
+});
+
+// ── Sync Now — failure: prior sync timestamp remains visible ──────────────────
+
+test("shows a sync error message in the card after a failed POST /devices/:id/sync", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE]));
+  mockApiFetch.mockRejectedValueOnce(new Error("Provider API unavailable"));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Sync Now" }));
+  await within(card).findByRole("alert");
+  expect(within(card).getByRole("alert").textContent).toContain("Provider API unavailable");
+});
+
+test("prior last-sync timestamp remains visible on the card after a failed sync", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE]));
+  mockApiFetch.mockRejectedValueOnce(new Error("Provider API unavailable"));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Sync Now" }));
+  await within(card).findByRole("alert");
+  // lastSyncAt: 2026-01-17T10:30:00.000Z — card must still contain "Jan" and "2026"
+  const cardText = card.textContent ?? "";
+  expect(cardText).toContain("Jan");
+  expect(cardText).toContain("2026");
+});
+
+// ── Sync Now — partial_discard ────────────────────────────────────────────────
+
+test("shows a partial-discard notice after sync responds with syncStatus 'partial_discard'", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE]));
+  mockApiFetch.mockResolvedValueOnce({
+    data: { syncRunId: "run-2", syncStatus: "partial_discard", recordsWritten: 2, recordsDiscarded: 3 },
+  });
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Sync Now" }));
+  await within(card).findByRole("alert");
+  expect(within(card).getByRole("alert").textContent).toContain("partial");
 });
