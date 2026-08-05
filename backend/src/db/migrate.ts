@@ -5,12 +5,13 @@ import { getDatabase } from "./connection.js";
 export function migrate(migrationsDir: string): void {
   const db = getDatabase();
 
-  db.exec(
-    `CREATE TABLE IF NOT EXISTS _migrations (
-       filename TEXT NOT NULL PRIMARY KEY,
-       applied_at TEXT NOT NULL
-     )`,
-  );
+  // Ensure the tracking table exists so we can skip already-applied migrations
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS _migrations (
+      filename TEXT NOT NULL PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    )
+  `);
 
   if (!existsSync(migrationsDir)) {
     return;
