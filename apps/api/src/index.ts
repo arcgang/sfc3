@@ -8,7 +8,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
 import { devicesRouter } from "./api/devicesRoutes.js";
 import { alertsRouter } from "./api/alertsRoutes.js";
-import { goalsRouter } from "./routes/goals.js";
+import { goalsRouter } from "./goals/goalsRouter.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
