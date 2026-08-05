@@ -39,7 +39,7 @@ export function buildConfig(env: Record<string, string | undefined>): Config {
   }
   const thresholdsPath = env["ALERT_THRESHOLDS_PATH"] ?? DEFAULT_THRESHOLDS_PATH;
   return {
-    port: env["PORT"] ? Number(env["PORT"]) : 3001,
+    port: env["PORT"] ? Number(env["PORT"]) : 3000,
     jwtSecret,
     alertThresholds: loadAlertThresholds(thresholdsPath),
   };

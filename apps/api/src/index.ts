@@ -15,7 +15,6 @@ const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "db", "migra
 migrate(migrationsDir);
 
 const app = express();
-
 app.use(express.json());
 app.use(correlationIdMiddleware);
 
@@ -31,5 +30,5 @@ app.use("/api/v1/alerts", requireAuth, alertsRouter);
 app.use(errorHandler);
 
 app.listen(config.port, () => {
-  console.log({ event: "server.started", port: config.port });
+  console.log(`service listening on :${config.port}`);
 });

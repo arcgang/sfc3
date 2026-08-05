@@ -450,6 +450,80 @@ describe("PUT /api/v1/devices/connections — action=connect (smart_scale)", () 
     expect(body.data.device.status).toBe("connected");
     expect(body.data.device.deviceType).toBe("smart_scale");
   });
+
+  it("creates a device_connections row with device_type='smart_scale' and connection_status='connected'", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "user-scale-2";
+    await seedUser(dbPath, userId);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smart_scale", action: "connect", providerAccountRef: "scale-acc-2" });
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare(
+        "SELECT device_type, connection_status FROM device_connections WHERE user_id = ?",
+      )
+      .get(userId) as { device_type: string; connection_status: string } | undefined;
+    db.close();
+
+    expect(row).toBeDefined();
+    expect(row?.device_type).toBe("smart_scale");
+    expect(row?.connection_status).toBe("connected");
+  });
+
+  it("emits a device.paired console log event for smart_scale", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "user-scale-3";
+    await seedUser(dbPath, userId);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smart_scale", action: "connect", providerAccountRef: "scale-acc-3" });
+
+    const calls = ctx.consoleSpy.mock.calls;
+    const pairedLog = calls.find(
+      (call) =>
+        typeof call[0] === "object" &&
+        call[0] !== null &&
+        (call[0] as Record<string, unknown>)["event"] === "device.paired" &&
+        (call[0] as Record<string, unknown>)["deviceType"] === "smart_scale",
+    );
+    expect(pairedLog).toBeDefined();
+    if (!pairedLog) throw new Error("device.paired log not found for smart_scale");
+    expect((pairedLog[0] as Record<string, unknown>)["deviceType"]).toBe("smart_scale");
+  });
+
+  it("emits device.paired log with userId for smart_scale", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "user-scale-4";
+    await seedUser(dbPath, userId);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smart_scale", action: "connect" });
+
+    const calls = ctx.consoleSpy.mock.calls;
+    const pairedLog = calls.find(
+      (call) =>
+        typeof call[0] === "object" &&
+        call[0] !== null &&
+        (call[0] as Record<string, unknown>)["event"] === "device.paired",
+    );
+    expect(pairedLog).toBeDefined();
+    if (!pairedLog) throw new Error("device.paired log not found for smart_scale");
+    expect((pairedLog[0] as Record<string, unknown>)["userId"]).toBe(userId);
+  });
 });
 
 // ---------------------------------------------------------------------------
