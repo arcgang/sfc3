@@ -26,7 +26,8 @@ export class PartnerServiceRepository {
       .prepare(
         `SELECT id, name, category, short_description, premium_required, marketplace_status
          FROM partner_services
-         ORDER BY name ASC`,
+         ORDER BY name ASC
+         LIMIT 100`,
       )
       .all() as PartnerServiceRow[];
 

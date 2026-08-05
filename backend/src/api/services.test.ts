@@ -353,28 +353,76 @@ describe("GET /api/v1/services", () => {
   });
 
   describe("premium_required badges", () => {
-    it("at least one service has premium_required = true", async () => {
+    it("NutriGuide has premium_required = true", async () => {
       const app = await buildApp();
       const res = await supertest(app).get("/api/v1/services");
-      const services = (
-        res.body as {
-          data: { services: { premium_required: boolean }[] };
-        }
-      ).data.services;
-      const premiumCount = services.filter((s) => s.premium_required).length;
-      expect(premiumCount).toBeGreaterThan(0);
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "NutriGuide");
+      expect(svc?.premium_required).toBe(true);
     });
 
-    it("at least one service has premium_required = false", async () => {
+    it("SleepWell Program has premium_required = true", async () => {
       const app = await buildApp();
       const res = await supertest(app).get("/api/v1/services");
-      const services = (
-        res.body as {
-          data: { services: { premium_required: boolean }[] };
-        }
-      ).data.services;
-      const freeCount = services.filter((s) => !s.premium_required).length;
-      expect(freeCount).toBeGreaterThan(0);
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "SleepWell Program");
+      expect(svc?.premium_required).toBe(true);
+    });
+
+    it("RunCoach has premium_required = true", async () => {
+      const app = await buildApp();
+      const res = await supertest(app).get("/api/v1/services");
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "RunCoach");
+      expect(svc?.premium_required).toBe(true);
+    });
+
+    it("Stress Relief has premium_required = true", async () => {
+      const app = await buildApp();
+      const res = await supertest(app).get("/api/v1/services");
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "Stress Relief");
+      expect(svc?.premium_required).toBe(true);
+    });
+
+    it("FitPro Training has premium_required = false", async () => {
+      const app = await buildApp();
+      const res = await supertest(app).get("/api/v1/services");
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "FitPro Training");
+      expect(svc?.premium_required).toBe(false);
+    });
+
+    it("MindfulMe has premium_required = false", async () => {
+      const app = await buildApp();
+      const res = await supertest(app).get("/api/v1/services");
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "MindfulMe");
+      expect(svc?.premium_required).toBe(false);
+    });
+
+    it("Strength Builder has premium_required = false", async () => {
+      const app = await buildApp();
+      const res = await supertest(app).get("/api/v1/services");
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "Strength Builder");
+      expect(svc?.premium_required).toBe(false);
+    });
+
+    it("Wellness Coaching has premium_required = false", async () => {
+      const app = await buildApp();
+      const res = await supertest(app).get("/api/v1/services");
+      const svc = (
+        res.body as { data: { services: { name: string; premium_required: boolean }[] } }
+      ).data.services.find((s) => s.name === "Wellness Coaching");
+      expect(svc?.premium_required).toBe(false);
     });
   });
 });
