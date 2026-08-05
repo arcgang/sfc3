@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { DeviceConnectionRepository } from "../repositories/DeviceConnectionRepository.js";
+import {
+  DeviceConnectionRepository,
+  type DeviceConnectionRow,
+} from "../repositories/DeviceConnectionRepository.js";
 import type { ErrorResponse } from "../types/errors.js";
 
 const deviceConnectionSchema = z.object({
@@ -69,7 +72,7 @@ export async function handleDeviceConnection(
   const repo = new DeviceConnectionRepository();
   const existing = repo.findByUserAndType(userId, deviceType);
 
-  let row;
+  let row: DeviceConnectionRow;
 
   if (action === "connect") {
     if (existing) {

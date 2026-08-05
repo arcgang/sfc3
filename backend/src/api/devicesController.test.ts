@@ -63,10 +63,18 @@ describe("PUT /api/v1/devices/connections — device_connections table must exis
 describe("PUT /api/v1/devices/connections", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.DB_PATH = ":memory:";
-    // Reset module registry so each test group gets a fresh in-memory DB
+    // Reset module registry so each test group gets a fresh in-memory DB.
+    // Then immediately run migrations using the same fresh module instances
+    // that buildApp() and the router will use, so they all share one DB handle.
     vi.resetModules();
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const { migrate } = await import("../db/migrate.js");
+    migrate(
+      join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
+    );
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -182,25 +190,13 @@ describe("PUT /api/v1/devices/connections", () => {
   // -------------------------------------------------------------------------
   describe("action=connect — smart_scale", () => {
     it("returns HTTP 200 on a valid connect request", async () => {
-      const app = await buildApp();
-
-      // Seed the user so the FK constraint is satisfied
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      const migrationsDir = join(
-        dirname(fileURLToPath(import.meta.url)),
-        "..",
-        "db",
-        "migrations",
-      );
-      migrate(migrationsDir);
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -214,19 +210,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("response body contains data.device.deviceType = 'smart_scale'", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -236,19 +226,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("response body contains data.device.status = 'connected'", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -258,19 +242,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("creates a device_connections row in the database with device_type='smart_scale' and connection_status='connected'", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -289,19 +267,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("emits a device.paired console log event", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -317,19 +289,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("device.paired log includes deviceType and userId", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -349,19 +315,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("response body meta.correlationId is a UUID", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -378,19 +338,13 @@ describe("PUT /api/v1/devices/connections", () => {
   // -------------------------------------------------------------------------
   describe("action=connect — smartwatch", () => {
     it("returns HTTP 200 and status=connected for smartwatch", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -402,19 +356,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("creates a device_connections row with device_type='smartwatch'", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -438,19 +386,13 @@ describe("PUT /api/v1/devices/connections", () => {
   // -------------------------------------------------------------------------
   describe("action=disconnect", () => {
     it("returns 409 when the device is not connected (no row exists)", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -460,19 +402,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("returns 409 body with error.type = DEVICE_STATE_CONFLICT", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -483,18 +419,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("returns 200 and status=disconnected when a connected device is disconnected", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
+
+      const app = await buildApp();
 
       // First connect
       await supertest(app)
@@ -518,19 +449,13 @@ describe("PUT /api/v1/devices/connections", () => {
   // -------------------------------------------------------------------------
   describe("action=reconnect", () => {
     it("returns 409 when device has no existing connection row", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
 
+      const app = await buildApp();
       const res = await supertest(app)
         .put("/api/v1/devices/connections")
         .set("Authorization", `Bearer ${makeToken()}`)
@@ -540,18 +465,13 @@ describe("PUT /api/v1/devices/connections", () => {
     });
 
     it("returns 200 and status=connected when reconnecting a disconnected device", async () => {
-      const app = await buildApp();
       const { getDatabase } = await import("../db/connection.js");
-      const { migrate } = await import("../db/migrate.js");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      migrate(
-        join(dirname(fileURLToPath(import.meta.url)), "..", "db", "migrations"),
-      );
       const db = getDatabase();
       db.prepare(
         "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, 'h', 'active')",
       ).run(USER_ID, "alice@example.com");
+
+      const app = await buildApp();
 
       // Connect then disconnect
       await supertest(app)

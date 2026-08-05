@@ -6,6 +6,11 @@ export interface DeviceConnectionRow {
   user_id: string;
   device_type: "smartwatch" | "smart_scale";
   connection_status: "connected" | "disconnected" | "error";
+  provider: string;
+  device_name: string | null;
+  battery: string | null;
+  connected_since: string;
+  last_sync_at: string | null;
   provider_account_ref: string | null;
   last_synced_at: string | null;
   created_at: string;
@@ -23,8 +28,9 @@ export class DeviceConnectionRepository {
   ): DeviceConnectionRow | undefined {
     return this.db
       .prepare(
-        `SELECT id, user_id, device_type, connection_status, provider_account_ref,
-                last_synced_at, created_at, updated_at
+        `SELECT id, user_id, device_type, connection_status, provider,
+                device_name, battery, connected_since, last_sync_at,
+                provider_account_ref, last_synced_at, created_at, updated_at
          FROM device_connections
          WHERE user_id = ? AND device_type = ?`,
       )
@@ -41,10 +47,11 @@ export class DeviceConnectionRepository {
     this.db
       .prepare(
         `INSERT INTO device_connections
-           (id, user_id, device_type, connection_status, provider_account_ref, last_synced_at, created_at, updated_at)
-         VALUES (?, ?, ?, 'connected', ?, NULL, ?, ?)`,
+           (id, user_id, device_type, connection_status, provider, connected_since,
+            provider_account_ref, last_synced_at, created_at, updated_at)
+         VALUES (?, ?, ?, 'connected', '', ?, ?, NULL, ?, ?)`,
       )
-      .run(id, userId, deviceType, providerAccountRef, now, now);
+      .run(id, userId, deviceType, now, providerAccountRef, now, now);
     return this.findByUserAndType(userId, deviceType) as DeviceConnectionRow;
   }
 
@@ -60,8 +67,9 @@ export class DeviceConnectionRepository {
       .run(status, now, id);
     return this.db
       .prepare(
-        `SELECT id, user_id, device_type, connection_status, provider_account_ref,
-                last_synced_at, created_at, updated_at
+        `SELECT id, user_id, device_type, connection_status, provider,
+                device_name, battery, connected_since, last_sync_at,
+                provider_account_ref, last_synced_at, created_at, updated_at
          FROM device_connections WHERE id = ?`,
       )
       .get(id) as DeviceConnectionRow;
