@@ -211,14 +211,31 @@
   gap: 0.5rem;
 }
 
+.goalCardMuted {
+  opacity: 0.65;
+}
+
 .goalHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
 
-.goalHeader h3 {
+.goalIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.goalHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.goalHeaderText h3 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
@@ -226,6 +243,7 @@
 }
 
 .statusBadge {
+  display: inline-block;
   padding: 0.125rem 0.5rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -247,6 +265,16 @@
   color: var(--color-danger);
 }
 
+.badgeCompleted {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.badgeArchived {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
 .goalMeta {
   margin: 0;
   font-size: 0.8125rem;
@@ -257,6 +285,56 @@
   margin: 0;
   font-size: 0.875rem;
   color: var(--color-text-primary);
+}
+
+.goalProgress {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.progressBarTrack {
+  width: 100%;
+  height: 0.5rem;
+  background-color: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.progressFillOnTrack {
+  background-color: var(--color-success);
+}
+
+.progressFillAtRisk {
+  background-color: var(--color-warning);
+}
+
+.progressFillMissed {
+  background-color: var(--color-danger);
+}
+
+.weekOverWeek {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.completedSection {
+  margin-top: 1.5rem;
+}
+
+.completedHeading {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
 }
 
 .insightsSection {
