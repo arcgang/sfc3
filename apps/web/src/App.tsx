@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { ConnectedDevicesPage } from "./pages/ConnectedDevicesPage.js";
 import { Footer } from "./components/Footer.js";
 import { Layout } from "./components/Layout.js";
 import { AlertsPage } from "./pages/AlertsPage.js";
