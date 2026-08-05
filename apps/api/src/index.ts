@@ -11,6 +11,7 @@ import { alertsRouter } from "./api/alertsRoutes.js";
 import { goalsRouter } from "./routes/goals.js";
 import { dashboardRouter } from "./api/dashboardRoutes.js";
 import { buildAuthRouter } from "./routes/auth.js";
+import { profileRouter } from "./routes/profile.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -29,6 +30,7 @@ app.use("/api/v1/auth", buildAuthRouter(config.jwtSecret));
 
 const requireAuth = authMiddleware(config.jwtSecret);
 
+app.use("/api/v1/profile", requireAuth, profileRouter);
 app.use("/api/v1/devices", requireAuth, devicesRouter);
 app.use("/api/v1/alerts", requireAuth, alertsRouter);
 app.use("/api/v1/goals", requireAuth, goalsRouter);
