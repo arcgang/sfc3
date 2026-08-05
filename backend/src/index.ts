@@ -41,6 +41,7 @@ app.post("/echo", validateBody(echoSchema), (req: Request, res: Response) => {
   const { message } = req.body as z.infer<typeof echoSchema>;
   res.json({ message });
 });
+app.use("/api/v1/devices", requireAuth, devicesRouter);
 app.use(errorHandler);
 
 app.listen(config.port, () => {
