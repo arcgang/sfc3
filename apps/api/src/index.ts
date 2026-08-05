@@ -6,7 +6,7 @@ import { correlationIdMiddleware } from "./middleware/correlationId.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
-import { devicesRouter } from "./api/devicesRoutes.js";
+import { devicesRouter } from "./routes/devices.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -14,7 +14,6 @@ const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "db", "migra
 migrate(migrationsDir);
 
 const app = express();
-
 app.use(express.json());
 app.use(correlationIdMiddleware);
 
@@ -29,5 +28,5 @@ app.use("/api/v1/devices", requireAuth, devicesRouter);
 app.use(errorHandler);
 
 app.listen(config.port, () => {
-  console.log({ event: "server.started", port: config.port });
+  console.log(`service listening on :${config.port}`);
 });

@@ -33,7 +33,7 @@ export function authMiddleware(
 
 function rejectUnauthorized(res: Response, reason: string): void {
   console.log({
-    event: "auth.login_attempt",
+    event: "auth.session_attempt",
     success: false,
     reason,
     correlationId: res.locals["correlationId"] as string | undefined,

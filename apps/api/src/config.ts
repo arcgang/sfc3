@@ -9,7 +9,7 @@ export function buildConfig(env: Record<string, string | undefined>): Config {
     throw new Error("Missing required environment variable: JWT_SECRET");
   }
   return {
-    port: env["PORT"] ? Number(env["PORT"]) : 3001,
+    port: env["PORT"] ? Number(env["PORT"]) : 3000,
     jwtSecret,
   };
 }
