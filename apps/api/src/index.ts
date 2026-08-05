@@ -40,7 +40,7 @@ app.post("/echo", validateBody(echoSchema), (req: Request, res: Response) => {
   res.json({ message });
 });
 
-app.use("/api/v1/services", servicesRouter);
+app.use("/api/v1/services", requireAuth, servicesRouter);
 
 app.use(errorHandler);
 

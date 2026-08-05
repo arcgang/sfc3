@@ -64,48 +64,46 @@ describe("GET /api/v1/services", () => {
       delete process.env.DB_PATH;
     });
 
-    it("the partner_services table has a premium_required column", async () => {
+    it("the partner_services table has a premium_required column with integer values 0 or 1", async () => {
       process.env.DB_PATH = ":memory:";
       vi.resetModules();
       const { migrate } = await import("../db/migrate.js");
       migrate(MIGRATIONS_DIR);
       const { getDatabase } = await import("../db/connection.js");
       const db = getDatabase();
-      expect(() =>
-        db
-          .prepare(
-            "SELECT premium_required FROM partner_services LIMIT 1",
-          )
-          .get(),
-      ).not.toThrow();
+      const row = db
+        .prepare("SELECT premium_required FROM partner_services WHERE id = 'ps-nutri'")
+        .get() as { premium_required: number } | undefined;
+      expect(row?.premium_required).toBe(1);
       delete process.env.DB_PATH;
     });
 
-    it("the partner_services table has a category column", async () => {
+    it("the partner_services table has a category column with non-empty string values", async () => {
       process.env.DB_PATH = ":memory:";
       vi.resetModules();
       const { migrate } = await import("../db/migrate.js");
       migrate(MIGRATIONS_DIR);
       const { getDatabase } = await import("../db/connection.js");
       const db = getDatabase();
-      expect(() =>
-        db.prepare("SELECT category FROM partner_services LIMIT 1").get(),
-      ).not.toThrow();
+      const row = db
+        .prepare("SELECT category FROM partner_services WHERE id = 'ps-fitpro'")
+        .get() as { category: string } | undefined;
+      expect(row?.category).toBe("Fitness");
       delete process.env.DB_PATH;
     });
 
-    it("the partner_services table has a short_description column", async () => {
+    it("the partner_services table has a short_description column with non-empty string values", async () => {
       process.env.DB_PATH = ":memory:";
       vi.resetModules();
       const { migrate } = await import("../db/migrate.js");
       migrate(MIGRATIONS_DIR);
       const { getDatabase } = await import("../db/connection.js");
       const db = getDatabase();
-      expect(() =>
-        db
-          .prepare("SELECT short_description FROM partner_services LIMIT 1")
-          .get(),
-      ).not.toThrow();
+      const row = db
+        .prepare("SELECT short_description FROM partner_services WHERE id = 'ps-fitpro'")
+        .get() as { short_description: string } | undefined;
+      expect(typeof row?.short_description).toBe("string");
+      expect((row?.short_description ?? "").length).toBeGreaterThan(0);
       delete process.env.DB_PATH;
     });
   });
