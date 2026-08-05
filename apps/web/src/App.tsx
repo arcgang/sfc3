@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { ConnectedDevicesPage } from "./pages/ConnectedDevicesPage.js";
 import { Footer } from "./components/Footer.js";
 import { ContactPage } from "./pages/ContactPage.js";
 import { HomePage } from "./pages/HomePage";
@@ -23,15 +24,6 @@ function DevicesPairPlaceholder() {
   );
 }
 
-function DevicesPlaceholder() {
-  return (
-    <main>
-      <h1>Connected Devices</h1>
-      <p>Connected devices coming soon.</p>
-    </main>
-  );
-}
-
 export function App() {
   return (
     <>
@@ -41,7 +33,7 @@ export function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/partners-services" element={<PartnersServicesPage />} />
         <Route path="/devices/pair" element={<DevicesPairPlaceholder />} />
-        <Route path="/devices" element={<DevicesPlaceholder />} />
+        <Route path="/devices" element={<ConnectedDevicesPage />} />
         <Route path="*" element={<Placeholder />} />
       </Routes>
       <Footer />
