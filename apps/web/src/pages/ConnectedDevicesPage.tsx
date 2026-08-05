@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import styles from "./ConnectedDevicesPage.module.css";
 
@@ -72,19 +72,28 @@ function statusBadge(status: string): string {
   }
 }
 
+interface ReconnectResponse {
+  data: {
+    device: DeviceDto;
+  };
+}
+
 interface DeviceCardProps {
   device: DeviceDto;
   onSyncSuccess: (deviceId: string, syncedAt: string) => void;
+  onReconnectSuccess: (updated: DeviceDto) => void;
+  onDisconnectSuccess: (deviceId: string) => void;
 }
 
-function DeviceCard({ device, onSyncSuccess }: DeviceCardProps) {
-  const navigate = useNavigate();
+function DeviceCard({ device, onSyncSuccess, onReconnectSuccess, onDisconnectSuccess }: DeviceCardProps) {
   const [syncing, setSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   function handleSyncNow() {
     setSyncing(true);
-    setSyncError(null);
+    setActionError(null);
 
     apiFetch<SyncResponse>(`/devices/${device.id}/sync`, { method: "POST" })
       .then((res) => {
@@ -92,18 +101,55 @@ function DeviceCard({ device, onSyncSuccess }: DeviceCardProps) {
         const syncedAt = new Date().toISOString();
         onSyncSuccess(device.id, syncedAt);
         if (res.data.syncStatus === "partial_discard") {
-          setSyncError(
+          setActionError(
             "Sync completed with partial data: some measurements were discarded due to missing required fields.",
           );
         }
       })
       .catch((err: unknown) => {
         setSyncing(false);
-        setSyncError(
+        setActionError(
           err instanceof Error ? err.message : "Sync failed. Please try again.",
         );
       });
   }
+
+  function handleReconnect() {
+    setReconnecting(true);
+    setActionError(null);
+
+    apiFetch<ReconnectResponse>(`/devices/${device.id}/reconnect`, { method: "POST" })
+      .then((res) => {
+        setReconnecting(false);
+        onReconnectSuccess(res.data.device);
+      })
+      .catch((err: unknown) => {
+        setReconnecting(false);
+        setActionError(
+          err instanceof Error ? err.message : "Reconnect failed. Please try again.",
+        );
+      });
+  }
+
+  function handleDisconnect() {
+    setDisconnecting(true);
+    setActionError(null);
+
+    apiFetch<null>(`/devices/${device.id}`, { method: "DELETE" })
+      .then(() => {
+        setDisconnecting(false);
+        onDisconnectSuccess(device.id);
+      })
+      .catch((err: unknown) => {
+        setDisconnecting(false);
+        setActionError(
+          err instanceof Error ? err.message : "Disconnect failed. Please try again.",
+        );
+      });
+  }
+
+  const isSynced = device.status === "connected";
+  const isStaleOrFailed = device.status === "pending" || device.status === "error" || device.status === "disconnected";
 
   return (
     <li className={styles.card}>
@@ -143,14 +189,14 @@ function DeviceCard({ device, onSyncSuccess }: DeviceCardProps) {
         </div>
       </dl>
 
-      {syncError && (
+      {actionError && (
         <p role="alert" className={styles.syncError}>
-          {syncError}
+          {actionError}
         </p>
       )}
 
       <div className={styles.cardActions}>
-        {device.status === "connected" ? (
+        {isSynced && (
           <button
             type="button"
             className={styles.btnSecondary}
@@ -160,17 +206,26 @@ function DeviceCard({ device, onSyncSuccess }: DeviceCardProps) {
           >
             {syncing ? "Syncing…" : "Sync Now"}
           </button>
-        ) : (
-          <button type="button" className={styles.btnSecondary}>
-            Reconnect
+        )}
+        {isStaleOrFailed && (
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={handleReconnect}
+            disabled={reconnecting}
+            aria-busy={reconnecting}
+          >
+            {reconnecting ? "Reconnecting…" : "Reconnect"}
           </button>
         )}
         <button
           type="button"
           className={styles.btnDanger}
-          onClick={() => navigate("/devices/pair")}
+          onClick={handleDisconnect}
+          disabled={disconnecting}
+          aria-busy={disconnecting}
         >
-          Disconnect
+          {disconnecting ? "Disconnecting…" : "Disconnect"}
         </button>
       </div>
     </li>
@@ -270,6 +325,14 @@ export function ConnectedDevicesPage() {
                         : d,
                     ),
                   );
+                }}
+                onReconnectSuccess={(updated) => {
+                  setDevices((prev) =>
+                    prev.map((d) => (d.id === updated.id ? updated : d)),
+                  );
+                }}
+                onDisconnectSuccess={(deviceId) => {
+                  setDevices((prev) => prev.filter((d) => d.id !== deviceId));
                 }}
               />
             ))}

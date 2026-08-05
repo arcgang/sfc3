@@ -381,3 +381,119 @@ test("shows a partial-discard notice after sync responds with syncStatus 'partia
   await within(card).findByRole("alert");
   expect(within(card).getByRole("alert").textContent).toContain("partial");
 });
+
+// ── Badge CSS classes — stale (yellow) and failed (red) ───────────────────────
+
+test("stale device badge has the statusWarning CSS class (yellow styling)", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SCALE_DEVICE]));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Withings Body+", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  const badge = within(card).getByText("⚠ Stale Data");
+  expect(badge.className).toContain("statusWarning");
+});
+
+test("sync-failed device badge has the statusError CSS class (red styling)", async () => {
+  const failedDevice = {
+    id: "device-003",
+    deviceName: "Apple Watch Series 8",
+    provider: "Apple",
+    deviceType: "smartwatch" as const,
+    status: "error",
+    lastSyncAt: "2026-01-14T10:00:00.000Z",
+    batteryLevel: "Unknown",
+    connectedSince: "2025-12-20T00:00:00.000Z",
+  };
+  mockApiFetch.mockResolvedValueOnce(makeResponse([failedDevice]));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Apple Watch Series 8", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  const badge = within(card).getByText("✗ Sync Failed");
+  expect(badge.className).toContain("statusError");
+});
+
+// ── Synced card: Sync Now present, Reconnect absent ───────────────────────────
+
+test("synced card shows 'Sync Now' button and does NOT show 'Reconnect'", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE]));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  expect(within(card).getByRole("button", { name: "Sync Now" })).toBeTruthy();
+  expect(within(card).queryByRole("button", { name: "Reconnect" })).toBeNull();
+});
+
+// ── Stale card: Reconnect present, Sync Now absent ───────────────────────────
+
+test("stale card shows 'Reconnect' button and does NOT show 'Sync Now'", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SCALE_DEVICE]));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Withings Body+", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  expect(within(card).getByRole("button", { name: "Reconnect" })).toBeTruthy();
+  expect(within(card).queryByRole("button", { name: "Sync Now" })).toBeNull();
+});
+
+// ── Reconnect — success ───────────────────────────────────────────────────────
+
+test("clicking 'Reconnect' calls POST /devices/:id/reconnect with the device id 'device-002'", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SCALE_DEVICE]));
+  mockApiFetch.mockResolvedValueOnce({
+    data: { device: { ...SCALE_DEVICE, status: "connected" } },
+  });
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Withings Body+", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Reconnect" }));
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith("/devices/device-002/reconnect", { method: "POST" });
+  });
+});
+
+test("after a successful reconnect the card shows '✓ Synced' status", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SCALE_DEVICE]));
+  mockApiFetch.mockResolvedValueOnce({
+    data: { device: { ...SCALE_DEVICE, status: "connected" } },
+  });
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Withings Body+", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Reconnect" }));
+  await within(card).findByText("✓ Synced");
+});
+
+// ── Disconnect — success ──────────────────────────────────────────────────────
+
+test("clicking 'Disconnect' calls DELETE /devices/:id with the device id 'device-001'", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE]));
+  mockApiFetch.mockResolvedValueOnce(null);
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Disconnect" }));
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith("/devices/device-001", { method: "DELETE" });
+  });
+});
+
+test("after a successful disconnect the device card is removed from the list", async () => {
+  mockApiFetch.mockResolvedValueOnce(makeResponse([SMARTWATCH_DEVICE, SCALE_DEVICE]));
+  mockApiFetch.mockResolvedValueOnce(null);
+  renderPage();
+  await screen.findByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const heading = screen.getByRole("heading", { name: "Fitbit Charge 5", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  fireEvent.click(within(card).getByRole("button", { name: "Disconnect" }));
+  await waitFor(() => {
+    expect(screen.queryByRole("heading", { name: "Fitbit Charge 5", level: 2 })).toBeNull();
+  });
+  expect(screen.getByRole("heading", { name: "Withings Body+", level: 2 })).toBeTruthy();
+});
