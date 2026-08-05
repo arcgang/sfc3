@@ -4,9 +4,8 @@ import { PartnerServiceRepository } from "../repositories/PartnerServiceReposito
 
 export const servicesRouter = Router();
 
-const repo = new PartnerServiceRepository(getDatabase());
-
 servicesRouter.get("/", (_req: Request, res: Response): void => {
+  const repo = new PartnerServiceRepository(getDatabase());
   const services = repo.findAll();
 
   res.status(200).json({

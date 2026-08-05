@@ -1,10 +1,29 @@
 -- 002_partner_services_seed.sql
 -- Adds category, short_description, and premium_required columns to partner_services,
 -- then inserts the 8 seeded services required by the Partners & Services discovery screen.
+--
+-- Idempotency: partner_services is recreated via a temp table so ADD COLUMN is never
+-- needed. The INSERT OR IGNORE on seed rows is safe to re-run at any time.
 
-ALTER TABLE partner_services ADD COLUMN category TEXT NOT NULL DEFAULT '';
-ALTER TABLE partner_services ADD COLUMN short_description TEXT NOT NULL DEFAULT '';
-ALTER TABLE partner_services ADD COLUMN premium_required INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS partner_services_v2 (
+  id                 TEXT    NOT NULL PRIMARY KEY,
+  name               TEXT    NOT NULL,
+  category           TEXT    NOT NULL DEFAULT '',
+  short_description  TEXT    NOT NULL DEFAULT '',
+  premium_required   INTEGER NOT NULL DEFAULT 0,
+  marketplace_status TEXT    NOT NULL
+                             CHECK (marketplace_status IN ('deferred','future_ready')),
+  revenue_model_ref  TEXT,
+  created_at         TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+INSERT OR IGNORE INTO partner_services_v2 (id, name, category, short_description, premium_required, marketplace_status, created_at)
+SELECT id, name, '' , COALESCE(description, ''), 0, marketplace_status, created_at
+FROM partner_services
+WHERE id NOT IN (SELECT id FROM partner_services_v2);
+
+DROP TABLE IF EXISTS partner_services;
+ALTER TABLE partner_services_v2 RENAME TO partner_services;
 
 INSERT OR IGNORE INTO partner_services (id, name, category, short_description, premium_required, marketplace_status, created_at)
 VALUES
