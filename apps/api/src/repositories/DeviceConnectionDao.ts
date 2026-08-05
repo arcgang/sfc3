@@ -8,8 +8,12 @@ export interface DeviceConnection {
   id: string;
   userId: string;
   deviceType: DeviceType;
+  deviceName: string;
+  provider: string;
   connectionStatus: ConnectionStatus;
   lastSyncAt: string | null;
+  batteryLevel: string | null;
+  connectedSince: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -18,8 +22,12 @@ interface RawRow {
   id: string;
   user_id: string;
   device_type: string;
+  device_name: string;
+  provider: string;
   connection_status: string;
   last_sync_at: string | null;
+  battery_level: string | null;
+  connected_since: string;
   created_at: string;
   updated_at: string;
 }
@@ -33,8 +41,8 @@ export class DeviceConnectionDao {
   ): DeviceConnection | undefined {
     const row = this.db
       .prepare(
-        `SELECT id, user_id, device_type, connection_status,
-                last_sync_at, created_at, updated_at
+        `SELECT id, user_id, device_type, device_name, provider, connection_status,
+                last_sync_at, battery_level, connected_since, created_at, updated_at
            FROM device_connections
           WHERE user_id = ? AND device_type = ?`,
       )
@@ -54,10 +62,11 @@ export class DeviceConnectionDao {
     this.db
       .prepare(
         `INSERT INTO device_connections
-           (id, user_id, device_type, connection_status, last_sync_at, created_at, updated_at)
-         VALUES (?, ?, ?, 'connected', NULL, ?, ?)`,
+           (id, user_id, device_type, device_name, provider, connection_status,
+            last_sync_at, battery_level, connected_since, created_at, updated_at)
+         VALUES (?, ?, ?, '', '', 'connected', NULL, NULL, ?, ?, ?)`,
       )
-      .run(id, params.userId, params.deviceType, now, now);
+      .run(id, params.userId, params.deviceType, now, now, now);
 
     const created = this.findByUserAndType(params.userId, params.deviceType);
     if (!created) {
@@ -79,8 +88,8 @@ export class DeviceConnectionDao {
 
     const row = this.db
       .prepare(
-        `SELECT id, user_id, device_type, connection_status,
-                last_sync_at, created_at, updated_at
+        `SELECT id, user_id, device_type, device_name, provider, connection_status,
+                last_sync_at, battery_level, connected_since, created_at, updated_at
            FROM device_connections WHERE id = ?`,
       )
       .get(id) as RawRow | undefined;
@@ -96,8 +105,12 @@ export class DeviceConnectionDao {
       id: row.id,
       userId: row.user_id,
       deviceType: row.device_type as DeviceType,
+      deviceName: row.device_name,
+      provider: row.provider,
       connectionStatus: row.connection_status as ConnectionStatus,
       lastSyncAt: row.last_sync_at,
+      batteryLevel: row.battery_level,
+      connectedSince: row.connected_since,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

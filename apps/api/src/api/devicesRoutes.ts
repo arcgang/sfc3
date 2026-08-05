@@ -27,8 +27,12 @@ devicesRouter.put(
       typeof res.locals["correlationId"] === "string"
         ? res.locals["correlationId"]
         : "";
-    const user = res.locals["user"] as { sub: string };
-    const userId = user.sub;
+    const rawUser = res.locals["user"];
+    if (typeof rawUser !== "object" || rawUser === null || typeof (rawUser as Record<string, unknown>)["sub"] !== "string") {
+      res.status(401).json({ meta: { correlationId, timestamp: new Date().toISOString() }, error: { type: "AUTH_TOKEN_INVALID", details: [{ code: "AUTH_TOKEN_INVALID", message: "Invalid token payload." }] } });
+      return;
+    }
+    const userId = (rawUser as { sub: string }).sub;
 
     const db = getDatabase();
     const store = new DeviceConnectionDao(db);
@@ -122,6 +126,11 @@ function handleReconnect(
 
   if (!existing) {
     sendConflict(res, correlationId, "Cannot reconnect: no prior connection record exists.");
+    return;
+  }
+
+  if (existing.connectionStatus === "connected") {
+    sendConflict(res, correlationId, `Device ${deviceType} is already connected.`);
     return;
   }
 

@@ -10,3 +10,10 @@ export function getDatabase(): Database.Database {
   }
   return instance;
 }
+
+export function resetDatabase(): void {
+  if (instance) {
+    instance.close();
+    instance = undefined;
+  }
+}

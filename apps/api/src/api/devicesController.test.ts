@@ -8,6 +8,9 @@ import supertest from "supertest";
 import jwt from "jsonwebtoken";
 import Database from "better-sqlite3";
 
+// Far-future constant used for fixture timestamps — avoids absolute wall-clock dates.
+const FIXTURE_TIMESTAMP = "2099-01-01T00:00:00.000Z";
+
 const MIGRATIONS_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
   "../db/migrations",
@@ -43,13 +46,20 @@ class TestContext {
 
 let ctx: TestContext;
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Close the previous test's singleton before wiping the module registry,
+  // so we hold a reference to the old module's resetDatabase function.
+  const { resetDatabase } = await import("../db/connection.js");
+  resetDatabase();
   ctx = new TestContext();
   ctx.startConsoleSpy();
   vi.resetModules();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // Close the current test's singleton (opened by buildApp) before cleanup.
+  const { resetDatabase } = await import("../db/connection.js");
+  resetDatabase();
   ctx.cleanup();
   delete process.env.DB_PATH;
   delete process.env.JWT_SECRET;
@@ -309,7 +319,7 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
     expect(row?.connection_status).toBe("connected");
   });
 
-  it("emits a device.paired console log event with event='device.paired'", async () => {
+  it("emits a device.paired console log event with a UUID connectionId", async () => {
     const app = await buildApp();
     const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-6";
@@ -330,7 +340,9 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
     );
     expect(pairedLog).toBeDefined();
     if (!pairedLog) throw new Error("device.paired log not found");
-    expect((pairedLog[0] as Record<string, unknown>)["event"]).toBe("device.paired");
+    expect((pairedLog[0] as Record<string, unknown>)["connectionId"]).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
   });
 
   it("emits device.paired log with userId in the payload", async () => {
@@ -601,8 +613,8 @@ describe("PUT /api/v1/devices/connections — action=connect from error state", 
     db.prepare(
       `INSERT INTO device_connections
          (id, user_id, device_type, connection_status, last_sync_at, created_at, updated_at)
-       VALUES ('err-row-1', ?, 'smartwatch', 'error', NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
-    ).run(userId);
+       VALUES ('err-row-1', ?, 'smartwatch', 'error', NULL, ?, ?)`,
+    ).run(userId, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP);
     db.close();
 
     const token = makeToken(userId);
