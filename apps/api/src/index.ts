@@ -9,6 +9,8 @@ import { correlationIdMiddleware } from "./middleware/correlationId.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
+import { authRouter } from "./api/authController.js";
+import { goalsRouter } from "./api/goalsController.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -24,6 +26,8 @@ app.get("/health", (_req, res) => {
   res.json(health());
 });
 
+app.use("/api/v1/auth", authRouter);
+
 const requireAuth = authMiddleware(config.jwtSecret);
 
 app.get("/api/v1/me", requireAuth, (_req, res) => {
@@ -38,6 +42,9 @@ app.post("/echo", validateBody(echoSchema), (req: Request, res: Response) => {
   const { message } = req.body as z.infer<typeof echoSchema>;
   res.json({ message });
 });
+
+app.use("/api/v1/goals", requireAuth, goalsRouter);
+
 app.use(errorHandler);
 
 app.listen(config.port, () => {
