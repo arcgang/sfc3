@@ -10,6 +10,7 @@ import { devicesRouter } from "./api/devicesRoutes.js";
 import { alertsRouter } from "./api/alertsRoutes.js";
 import { goalsRouter } from "./routes/goals.js";
 import { dashboardRouter } from "./api/dashboardRoutes.js";
+import { authRouter } from "./routes/auth.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -23,6 +24,8 @@ app.use(correlationIdMiddleware);
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+
+app.use("/api/v1/auth", authRouter);
 
 const requireAuth = authMiddleware(config.jwtSecret);
 
