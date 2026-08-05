@@ -1,8 +1,35 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { vi, type MockedFunction } from "vitest";
 import { App } from "../App.js";
 import { DashboardPage } from "./DashboardPage.js";
 import { Layout } from "../components/Layout.js";
+import * as apiModule from "../api.js";
+
+vi.mock("../api.js", () => ({
+  apiFetch: vi.fn(),
+  setToken: vi.fn(),
+  clearToken: vi.fn(),
+}));
+
+const mockApiFetch = apiModule.apiFetch as MockedFunction<typeof apiModule.apiFetch>;
+
+function makeGoalsResponse(goals: Array<{ id: string; status: string }>) {
+  return {
+    data: {
+      goals: goals.map((g) => ({
+        id: g.id,
+        goalType: "steps_daily",
+        targetValue: 10000,
+        targetUnit: "steps",
+        cadence: "daily",
+        startDate: "2026-01-01",
+        status: g.status,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      })),
+    },
+  };
+}
 
 function renderDashboardPage() {
   return render(
@@ -24,9 +51,17 @@ function renderViaApp(path = "/dashboard") {
   );
 }
 
+beforeEach(() => {
+  mockApiFetch.mockResolvedValue(makeGoalsResponse([]));
+});
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
 // ── Route registration ────────────────────────────────────────────────────────
 
-test("/dashboard route renders the Dashboard page", () => {
+test("/dashboard route renders the Dashboard page", async () => {
   renderViaApp("/dashboard");
   screen.getByRole("heading", { name: /Good morning, Michael!/i, level: 1 });
 });
@@ -70,17 +105,17 @@ test("dashboard Goals section heading is rendered", () => {
   screen.getByRole("heading", { name: "Goals", level: 2 });
 });
 
-test("dashboard Goals section shows 'On track' count", () => {
+test("dashboard Goals section shows 'On track' label", () => {
   renderDashboardPage();
   screen.getByText("On track");
 });
 
-test("dashboard Goals section shows 'At risk' count", () => {
+test("dashboard Goals section shows 'At risk' label", () => {
   renderDashboardPage();
   screen.getByText("At risk");
 });
 
-test("dashboard Goals section shows 'Missed' count", () => {
+test("dashboard Goals section shows 'Missed' label", () => {
   renderDashboardPage();
   screen.getByText("Missed");
 });
@@ -94,4 +129,82 @@ test("'View All Goals →' link points to /goals", () => {
   renderDashboardPage();
   const link = screen.getByRole("link", { name: "View All Goals →" });
   expect(link.getAttribute("href")).toBe("/goals");
+});
+
+// ── Goals counts from API ─────────────────────────────────────────────────────
+
+test("displays correct on-track count from API response", async () => {
+  mockApiFetch.mockResolvedValue(
+    makeGoalsResponse([
+      { id: "1", status: "active" },
+      { id: "2", status: "active" },
+      { id: "3", status: "at_risk" },
+    ]),
+  );
+  renderDashboardPage();
+  const list = await screen.findByRole("list", { name: "Goals summary" });
+  const onTrackItem = within(list)
+    .getAllByRole("listitem")
+    .find((li) => within(li).queryByText("On track") !== null);
+  expect(within(onTrackItem!).getByText("2")).toBeTruthy();
+});
+
+test("displays correct at-risk count from API response", async () => {
+  mockApiFetch.mockResolvedValue(
+    makeGoalsResponse([
+      { id: "1", status: "active" },
+      { id: "2", status: "at_risk" },
+      { id: "3", status: "at_risk" },
+    ]),
+  );
+  renderDashboardPage();
+  const list = await screen.findByRole("list", { name: "Goals summary" });
+  const atRiskItem = within(list)
+    .getAllByRole("listitem")
+    .find((li) => within(li).queryByText("At risk") !== null);
+  expect(within(atRiskItem!).getByText("2")).toBeTruthy();
+});
+
+test("displays correct missed count from API response", async () => {
+  mockApiFetch.mockResolvedValue(
+    makeGoalsResponse([
+      { id: "1", status: "active" },
+      { id: "2", status: "missed" },
+      { id: "3", status: "missed" },
+      { id: "4", status: "missed" },
+    ]),
+  );
+  renderDashboardPage();
+  const list = await screen.findByRole("list", { name: "Goals summary" });
+  const missedItem = within(list)
+    .getAllByRole("listitem")
+    .find((li) => within(li).queryByText("Missed") !== null);
+  expect(within(missedItem!).getByText("3")).toBeTruthy();
+});
+
+test("displays zero counts when API returns empty goals list", async () => {
+  mockApiFetch.mockResolvedValue(makeGoalsResponse([]));
+  renderDashboardPage();
+  const list = await screen.findByRole("list", { name: "Goals summary" });
+  const items = within(list).getAllByRole("listitem");
+  for (const item of items) {
+    expect(within(item).getByText("0")).toBeTruthy();
+  }
+});
+
+test("shows error message and retry button when API call fails", async () => {
+  mockApiFetch.mockRejectedValue(new Error("Network error"));
+  renderDashboardPage();
+  await screen.findByText("Failed to load goals.");
+  screen.getByRole("button", { name: "Retry" });
+});
+
+test("calls GET /goals on mount", async () => {
+  renderDashboardPage();
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/goals",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
 });
