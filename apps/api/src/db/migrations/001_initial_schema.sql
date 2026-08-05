@@ -30,9 +30,13 @@ CREATE TABLE IF NOT EXISTS device_connections (
   user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   device_type       TEXT NOT NULL
                         CHECK (device_type IN ('smartwatch','smart_scale')),
-  connection_status TEXT NOT NULL
-                        CHECK (connection_status IN ('connected','disconnected','error')),
-  last_synced_at    TEXT,
+  device_name       TEXT NOT NULL DEFAULT '',
+  provider          TEXT NOT NULL DEFAULT '',
+  connection_status TEXT NOT NULL DEFAULT 'pending'
+                        CHECK (connection_status IN ('pending','connected','disconnected','error')),
+  last_sync_at      TEXT,
+  battery_level     TEXT,
+  connected_since   TEXT NOT NULL DEFAULT '',
   created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   UNIQUE (user_id, device_type)

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,22 +14,49 @@ const MIGRATIONS_DIR = join(
 );
 const TEST_JWT_SECRET = "test-jwt-secret-devices";
 
-let tmpDir: string;
-let consoleSpy: ReturnType<typeof vi.spyOn>;
+class TestContext {
+  private readonly _tmpDir: string;
+  private _consoleSpy: ReturnType<typeof vi.spyOn> | null = null;
+
+  constructor() {
+    this._tmpDir = mkdtempSync(join(tmpdir(), "devices-ctrl-test-"));
+  }
+
+  get tmpDir(): string {
+    return this._tmpDir;
+  }
+
+  get consoleSpy(): ReturnType<typeof vi.spyOn> {
+    if (!this._consoleSpy) throw new Error("consoleSpy not started");
+    return this._consoleSpy;
+  }
+
+  startConsoleSpy(): void {
+    this._consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+  }
+
+  cleanup(): void {
+    this._consoleSpy?.mockRestore();
+    rmSync(this._tmpDir, { recursive: true, force: true });
+  }
+}
+
+let ctx: TestContext;
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), "devices-ctrl-test-"));
+  ctx = new TestContext();
+  ctx.startConsoleSpy();
   vi.resetModules();
-  consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 });
 
 afterEach(() => {
-  consoleSpy.mockRestore();
-  rmSync(tmpDir, { recursive: true, force: true });
+  ctx.cleanup();
+  delete process.env.DB_PATH;
+  delete process.env.JWT_SECRET;
 });
 
 async function buildApp() {
-  const dbPath = join(tmpDir, "test.db");
+  const dbPath = join(ctx.tmpDir, "test.db");
   process.env.DB_PATH = dbPath;
   process.env.JWT_SECRET = TEST_JWT_SECRET;
 
@@ -72,8 +99,6 @@ describe("PUT /api/v1/devices/connections — authentication", () => {
       .put("/api/v1/devices/connections")
       .send({ deviceType: "smartwatch", action: "connect" });
     expect(res.status).toBe(401);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns error.type AUTH_TOKEN_INVALID when unauthenticated", async () => {
@@ -83,8 +108,6 @@ describe("PUT /api/v1/devices/connections — authentication", () => {
       .send({ deviceType: "smartwatch", action: "connect" });
     const body = res.body as { error: { type: string } };
     expect(body.error.type).toBe("AUTH_TOKEN_INVALID");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 });
 
@@ -95,7 +118,7 @@ describe("PUT /api/v1/devices/connections — authentication", () => {
 describe("PUT /api/v1/devices/connections — validation", () => {
   it("returns 422 when deviceType is missing", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-val-1";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -105,13 +128,11 @@ describe("PUT /api/v1/devices/connections — validation", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ action: "connect" });
     expect(res.status).toBe(422);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns 422 when action is missing", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-val-2";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -121,13 +142,11 @@ describe("PUT /api/v1/devices/connections — validation", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "smartwatch" });
     expect(res.status).toBe(422);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns 422 when deviceType is not smartwatch or smart_scale", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-val-3";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -137,13 +156,11 @@ describe("PUT /api/v1/devices/connections — validation", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "treadmill", action: "connect" });
     expect(res.status).toBe(422);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns 422 when action is not in the allowed enum", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-val-4";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -153,13 +170,11 @@ describe("PUT /api/v1/devices/connections — validation", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "smartwatch", action: "pair" });
     expect(res.status).toBe(422);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns error.type REQUEST_VALIDATION_FAILED on validation failure", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-val-5";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -170,13 +185,11 @@ describe("PUT /api/v1/devices/connections — validation", () => {
       .send({ action: "connect" });
     const body = res.body as { error: { type: string } };
     expect(body.error.type).toBe("REQUEST_VALIDATION_FAILED");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns 422 when syncWindowHours is below 1", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-val-6";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -186,13 +199,11 @@ describe("PUT /api/v1/devices/connections — validation", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "smartwatch", action: "sync", syncWindowHours: 0 });
     expect(res.status).toBe(422);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns 422 when syncWindowHours exceeds 168", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-val-7";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -202,8 +213,6 @@ describe("PUT /api/v1/devices/connections — validation", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "smartwatch", action: "sync", syncWindowHours: 169 });
     expect(res.status).toBe(422);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 });
 
@@ -214,7 +223,7 @@ describe("PUT /api/v1/devices/connections — validation", () => {
 describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () => {
   it("returns HTTP 200", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-1";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -225,13 +234,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
       .send({ deviceType: "smartwatch", action: "connect", providerAccountRef: "fitbit-acc-001" });
 
     expect(res.status).toBe(200);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns data.device.deviceType = 'smartwatch'", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-2";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -243,13 +250,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
 
     const body = res.body as { data: { device: { deviceType: string } } };
     expect(body.data.device.deviceType).toBe("smartwatch");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns data.device.status = 'connected'", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-3";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -261,13 +266,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
 
     const body = res.body as { data: { device: { status: string } } };
     expect(body.data.device.status).toBe("connected");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns data.device.lastSyncAt as null on initial connect", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-4";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -279,13 +282,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
 
     const body = res.body as { data: { device: { lastSyncAt: unknown } } };
     expect(body.data.device.lastSyncAt).toBeNull();
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("creates a device_connections row with device_type='smartwatch' and connection_status='connected'", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-5";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -306,13 +307,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
     expect(row).toBeDefined();
     expect(row?.device_type).toBe("smartwatch");
     expect(row?.connection_status).toBe("connected");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
-  it("emits a device.paired console log event", async () => {
+  it("emits a device.paired console log event with event='device.paired'", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-6";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -322,7 +321,7 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "smartwatch", action: "connect" });
 
-    const calls = consoleSpy.mock.calls;
+    const calls = ctx.consoleSpy.mock.calls;
     const pairedLog = calls.find(
       (call) =>
         typeof call[0] === "object" &&
@@ -330,13 +329,13 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
         (call[0] as Record<string, unknown>)["event"] === "device.paired",
     );
     expect(pairedLog).toBeDefined();
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
+    if (!pairedLog) throw new Error("device.paired log not found");
+    expect((pairedLog[0] as Record<string, unknown>)["event"]).toBe("device.paired");
   });
 
   it("emits device.paired log with userId in the payload", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-7";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -346,7 +345,7 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "smartwatch", action: "connect" });
 
-    const calls = consoleSpy.mock.calls;
+    const calls = ctx.consoleSpy.mock.calls;
     const pairedLog = calls.find(
       (call) =>
         typeof call[0] === "object" &&
@@ -356,13 +355,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
     expect(pairedLog).toBeDefined();
     if (!pairedLog) throw new Error("device.paired log not found");
     expect((pairedLog[0] as Record<string, unknown>)["userId"]).toBe(userId);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("emits device.paired log with deviceType in the payload", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-8";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -372,7 +369,7 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
       .set("Authorization", `Bearer ${token}`)
       .send({ deviceType: "smartwatch", action: "connect" });
 
-    const calls = consoleSpy.mock.calls;
+    const calls = ctx.consoleSpy.mock.calls;
     const pairedLog = calls.find(
       (call) =>
         typeof call[0] === "object" &&
@@ -382,13 +379,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
     expect(pairedLog).toBeDefined();
     if (!pairedLog) throw new Error("device.paired log not found");
     expect((pairedLog[0] as Record<string, unknown>)["deviceType"]).toBe("smartwatch");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("response includes meta.correlationId as a UUID", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-9";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -402,13 +397,11 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
     expect(body.meta.correlationId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("response includes meta.timestamp as ISO 8601 UTC", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conn-10";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -420,8 +413,6 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
 
     const body = res.body as { meta: { timestamp: string } };
     expect(new Date(body.meta.timestamp).toISOString()).toBe(body.meta.timestamp);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 });
 
@@ -432,7 +423,7 @@ describe("PUT /api/v1/devices/connections — action=connect (smartwatch)", () =
 describe("PUT /api/v1/devices/connections — action=connect (smart_scale)", () => {
   it("returns HTTP 200 and status=connected for smart_scale", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-scale-1";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -446,8 +437,6 @@ describe("PUT /api/v1/devices/connections — action=connect (smart_scale)", () 
     const body = res.body as { data: { device: { status: string; deviceType: string } } };
     expect(body.data.device.status).toBe("connected");
     expect(body.data.device.deviceType).toBe("smart_scale");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 });
 
@@ -458,7 +447,7 @@ describe("PUT /api/v1/devices/connections — action=connect (smart_scale)", () 
 describe("PUT /api/v1/devices/connections — action=connect conflict", () => {
   it("returns 409 when the device is already connected", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conflict-1";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -476,13 +465,11 @@ describe("PUT /api/v1/devices/connections — action=connect conflict", () => {
       .send({ deviceType: "smartwatch", action: "connect" });
 
     expect(res.status).toBe(409);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns error.type DEVICE_STATE_CONFLICT on duplicate connect", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-conflict-2";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -499,8 +486,6 @@ describe("PUT /api/v1/devices/connections — action=connect conflict", () => {
 
     const body = res.body as { error: { type: string } };
     expect(body.error.type).toBe("DEVICE_STATE_CONFLICT");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 });
 
@@ -511,7 +496,7 @@ describe("PUT /api/v1/devices/connections — action=connect conflict", () => {
 describe("PUT /api/v1/devices/connections — action=disconnect", () => {
   it("returns 409 when attempting to disconnect a device that is not connected", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-disc-1";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -522,13 +507,11 @@ describe("PUT /api/v1/devices/connections — action=disconnect", () => {
       .send({ deviceType: "smartwatch", action: "disconnect" });
 
     expect(res.status).toBe(409);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns 200 and status=disconnected when disconnecting a connected device", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-disc-2";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -548,8 +531,6 @@ describe("PUT /api/v1/devices/connections — action=disconnect", () => {
     expect(res.status).toBe(200);
     const body = res.body as { data: { device: { status: string } } };
     expect(body.data.device.status).toBe("disconnected");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 });
 
@@ -560,7 +541,7 @@ describe("PUT /api/v1/devices/connections — action=disconnect", () => {
 describe("PUT /api/v1/devices/connections — action=reconnect", () => {
   it("returns 409 when no prior connection record exists", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-recon-1";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -571,13 +552,11 @@ describe("PUT /api/v1/devices/connections — action=reconnect", () => {
       .send({ deviceType: "smartwatch", action: "reconnect" });
 
     expect(res.status).toBe(409);
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
   });
 
   it("returns 200 and status=connected after reconnecting a disconnected device", async () => {
     const app = await buildApp();
-    const dbPath = join(tmpDir, "test.db");
+    const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-recon-2";
     await seedUser(dbPath, userId);
     const token = makeToken(userId);
@@ -601,7 +580,53 @@ describe("PUT /api/v1/devices/connections — action=reconnect", () => {
     expect(res.status).toBe(200);
     const body = res.body as { data: { device: { status: string } } };
     expect(body.data.device.status).toBe("connected");
-    delete process.env.DB_PATH;
-    delete process.env.JWT_SECRET;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// action=connect from error state — emits device.reconnected, not device.paired
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/devices/connections — action=connect from error state", () => {
+  it("emits device.reconnected (not device.paired) when upgrading from error state", async () => {
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "user-err-1";
+
+    // Build app and seed once to create the DB, then inject an error-state row
+    const app = await buildApp();
+    await seedUser(dbPath, userId);
+
+    // Insert a pre-existing row in error state directly
+    const db = new Database(dbPath);
+    db.prepare(
+      `INSERT INTO device_connections
+         (id, user_id, device_type, connection_status, last_sync_at, created_at, updated_at)
+       VALUES ('err-row-1', ?, 'smartwatch', 'error', NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
+    ).run(userId);
+    db.close();
+
+    const token = makeToken(userId);
+    await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smartwatch", action: "connect" });
+
+    const calls = ctx.consoleSpy.mock.calls;
+    const pairedLog = calls.find(
+      (call) =>
+        typeof call[0] === "object" &&
+        call[0] !== null &&
+        (call[0] as Record<string, unknown>)["event"] === "device.paired",
+    );
+    const reconnectedLog = calls.find(
+      (call) =>
+        typeof call[0] === "object" &&
+        call[0] !== null &&
+        (call[0] as Record<string, unknown>)["event"] === "device.reconnected",
+    );
+    expect(pairedLog).toBeUndefined();
+    expect(reconnectedLog).toBeDefined();
+    if (!reconnectedLog) throw new Error("device.reconnected log not found");
+    expect((reconnectedLog[0] as Record<string, unknown>)["event"]).toBe("device.reconnected");
   });
 });

@@ -14,13 +14,15 @@ const deviceConnectionSchema = z.object({
 
 type DeviceConnectionBody = z.infer<typeof deviceConnectionSchema>;
 
+type TypedRequest = Request & { body: DeviceConnectionBody };
+
 export const devicesRouter = Router();
 
 devicesRouter.put(
   "/connections",
   validateBody(deviceConnectionSchema),
-  (req: Request, res: Response): void => {
-    const body = req.body as DeviceConnectionBody;
+  (req: TypedRequest, res: Response): void => {
+    const { deviceType, action } = req.body;
     const correlationId =
       typeof res.locals["correlationId"] === "string"
         ? res.locals["correlationId"]
@@ -30,8 +32,6 @@ devicesRouter.put(
 
     const db = getDatabase();
     const store = new DeviceConnectionDao(db);
-
-    const { deviceType, action } = body;
 
     if (action === "connect") {
       handleConnect(res, store, userId, deviceType, correlationId);
@@ -85,12 +85,13 @@ function handleConnect(
   }
 
   // If a row exists in any non-connected state, update it rather than insert
+  const isNew = !existing;
   const connection = existing
     ? store.updateStatus(existing.id, "connected")
     : store.create({ userId, deviceType });
 
   console.log({
-    event: "device.paired",
+    event: isNew ? "device.paired" : "device.reconnected",
     userId,
     deviceType,
     connectionId: connection.id,

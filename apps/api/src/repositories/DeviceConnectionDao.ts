@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 
 export type DeviceType = "smartwatch" | "smart_scale";
-export type ConnectionStatus = "connected" | "disconnected" | "error";
+export type ConnectionStatus = "pending" | "connected" | "disconnected" | "error";
 
 export interface DeviceConnection {
   id: string;
@@ -19,7 +19,7 @@ interface RawRow {
   user_id: string;
   device_type: string;
   connection_status: string;
-  last_synced_at: string | null;
+  last_sync_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,7 +34,7 @@ export class DeviceConnectionDao {
     const row = this.db
       .prepare(
         `SELECT id, user_id, device_type, connection_status,
-                last_synced_at, created_at, updated_at
+                last_sync_at, created_at, updated_at
            FROM device_connections
           WHERE user_id = ? AND device_type = ?`,
       )
@@ -54,12 +54,16 @@ export class DeviceConnectionDao {
     this.db
       .prepare(
         `INSERT INTO device_connections
-           (id, user_id, device_type, connection_status, last_synced_at, created_at, updated_at)
+           (id, user_id, device_type, connection_status, last_sync_at, created_at, updated_at)
          VALUES (?, ?, ?, 'connected', NULL, ?, ?)`,
       )
       .run(id, params.userId, params.deviceType, now, now);
 
-    return this.findByUserAndType(params.userId, params.deviceType)!;
+    const created = this.findByUserAndType(params.userId, params.deviceType);
+    if (!created) {
+      throw new Error(`device_connections INSERT did not produce a readable row for id=${id}`);
+    }
+    return created;
   }
 
   updateStatus(
@@ -76,11 +80,14 @@ export class DeviceConnectionDao {
     const row = this.db
       .prepare(
         `SELECT id, user_id, device_type, connection_status,
-                last_synced_at, created_at, updated_at
+                last_sync_at, created_at, updated_at
            FROM device_connections WHERE id = ?`,
       )
-      .get(id) as RawRow;
+      .get(id) as RawRow | undefined;
 
+    if (!row) {
+      throw new Error(`device_connections UPDATE found no row for id=${id}`);
+    }
     return this.mapRow(row);
   }
 
@@ -90,7 +97,7 @@ export class DeviceConnectionDao {
       userId: row.user_id,
       deviceType: row.device_type as DeviceType,
       connectionStatus: row.connection_status as ConnectionStatus,
-      lastSyncAt: row.last_synced_at,
+      lastSyncAt: row.last_sync_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
