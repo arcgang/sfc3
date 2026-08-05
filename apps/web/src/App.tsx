@@ -10,8 +10,10 @@ import { DevicePairingPage } from "./pages/DevicePairingPage.js";
 import { GoalsProgressPage } from "./pages/GoalsProgressPage.js";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage.js";
+import { OnboardingPage } from "./pages/OnboardingPage.js";
 import { PartnersServicesPage } from "./pages/PartnersServicesPage.js";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+import { RegisterPage } from "./pages/RegisterPage.js";
 
 function Placeholder() {
   return (
@@ -28,6 +30,8 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/partners-services" element={<PartnersServicesPage />} />
