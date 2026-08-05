@@ -8,5 +8,4 @@ ALTER TABLE device_connections ADD COLUMN provider TEXT NOT NULL DEFAULT '';
 ALTER TABLE device_connections ADD COLUMN device_name TEXT;
 ALTER TABLE device_connections ADD COLUMN battery TEXT;
 ALTER TABLE device_connections ADD COLUMN connected_since TEXT NOT NULL DEFAULT '';
-ALTER TABLE device_connections ADD COLUMN last_sync_at TEXT;
 ALTER TABLE device_connections ADD COLUMN provider_account_ref TEXT;

@@ -10,7 +10,6 @@ export interface DeviceConnectionRow {
   device_name: string | null;
   battery: string | null;
   connected_since: string;
-  last_sync_at: string | null;
   provider_account_ref: string | null;
   last_synced_at: string | null;
   created_at: string;
@@ -29,7 +28,7 @@ export class DeviceConnectionRepository {
     return this.db
       .prepare(
         `SELECT id, user_id, device_type, connection_status, provider,
-                device_name, battery, connected_since, last_sync_at,
+                device_name, battery, connected_since,
                 provider_account_ref, last_synced_at, created_at, updated_at
          FROM device_connections
          WHERE user_id = ? AND device_type = ?`,
@@ -40,6 +39,7 @@ export class DeviceConnectionRepository {
   insert(
     userId: string,
     deviceType: "smartwatch" | "smart_scale",
+    provider: string,
     providerAccountRef: string | null,
   ): DeviceConnectionRow {
     const id = uuidv4();
@@ -49,9 +49,9 @@ export class DeviceConnectionRepository {
         `INSERT INTO device_connections
            (id, user_id, device_type, connection_status, provider, connected_since,
             provider_account_ref, last_synced_at, created_at, updated_at)
-         VALUES (?, ?, ?, 'connected', '', ?, ?, NULL, ?, ?)`,
+         VALUES (?, ?, ?, 'connected', ?, ?, ?, NULL, ?, ?)`,
       )
-      .run(id, userId, deviceType, now, providerAccountRef, now, now);
+      .run(id, userId, deviceType, provider, now, providerAccountRef, now, now);
     return this.findByUserAndType(userId, deviceType) as DeviceConnectionRow;
   }
 
@@ -68,7 +68,7 @@ export class DeviceConnectionRepository {
     return this.db
       .prepare(
         `SELECT id, user_id, device_type, connection_status, provider,
-                device_name, battery, connected_since, last_sync_at,
+                device_name, battery, connected_since,
                 provider_account_ref, last_synced_at, created_at, updated_at
          FROM device_connections WHERE id = ?`,
       )

@@ -6,14 +6,17 @@ import {
 } from "../repositories/DeviceConnectionRepository.js";
 import type { ErrorResponse } from "../types/errors.js";
 
+const DEVICE_TYPE_PROVIDER: Record<"smartwatch" | "smart_scale", string> = {
+  smartwatch: "Generic Smartwatch",
+  smart_scale: "Withings",
+};
+
 const deviceConnectionSchema = z.object({
   deviceType: z.enum(["smartwatch", "smart_scale"]),
   action: z.enum(["connect", "reconnect", "disconnect", "sync"]),
   providerAccountRef: z.string().nullable().optional(),
   syncWindowHours: z.number().int().min(1).max(168).optional(),
 });
-
-type DeviceConnectionBody = z.infer<typeof deviceConnectionSchema>;
 
 function deviceConflictResponse(res: Response, message: string): void {
   const correlationId =
@@ -60,8 +63,7 @@ export async function handleDeviceConnection(
     return;
   }
 
-  const { deviceType, action, providerAccountRef } =
-    parsed.data as DeviceConnectionBody;
+  const { deviceType, action, providerAccountRef } = parsed.data;
 
   const userId = (res.locals["user"] as { sub: string }).sub;
   const correlationId =
@@ -79,7 +81,8 @@ export async function handleDeviceConnection(
       // Upsert: update to connected
       row = repo.updateStatus(existing.id, "connected");
     } else {
-      row = repo.insert(userId, deviceType, providerAccountRef ?? null);
+      const provider = DEVICE_TYPE_PROVIDER[deviceType];
+      row = repo.insert(userId, deviceType, provider, providerAccountRef ?? null);
     }
     console.log({
       event: "device.paired",
