@@ -14,6 +14,13 @@ function Placeholder() {
   );
 }
 
+<<<<<<< HEAD
+function WithFooter({ children }: { children: import("react").ReactNode }) {
+  return (
+    <>
+      {children}
+      <Footer />
+=======
 export function App() {
   const location = useLocation();
   // HomePage renders its own footer; suppress the global one there to avoid duplicate links
@@ -28,6 +35,18 @@ export function App() {
         <Route path="*" element={<Placeholder />} />
       </Routes>
       {showGlobalFooter && <Footer />}
+>>>>>>> origin/main
     </>
+  );
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/privacy" element={<WithFooter><PrivacyPolicy /></WithFooter>} />
+      <Route path="/contact" element={<WithFooter><ContactPage /></WithFooter>} />
+      <Route path="*" element={<WithFooter><Placeholder /></WithFooter>} />
+    </Routes>
   );
 }

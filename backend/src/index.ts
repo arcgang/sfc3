@@ -31,6 +31,8 @@ app.get("/api/v1/me", requireAuth, (_req, res) => {
   res.json({ user: res.locals["user"] });
 });
 
+app.use("/api/v1/devices", requireAuth, devicesRouter);
+
 const echoSchema = z.object({
   message: z.string().min(1),
 });
