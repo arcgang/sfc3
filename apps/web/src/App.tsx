@@ -1,7 +1,12 @@
 import { Route, Routes } from "react-router-dom";
 import { ConnectedDevicesPage } from "./pages/ConnectedDevicesPage.js";
 import { Footer } from "./components/Footer.js";
+import { Layout } from "./components/Layout.js";
+import { AlertsPage } from "./pages/AlertsPage.js";
 import { ContactPage } from "./pages/ContactPage.js";
+import { DevicePairingPage } from "./pages/DevicePairingPage.js";
+import { DashboardPage } from "./pages/DashboardPage.js";
+import { GoalsProgressPage } from "./pages/GoalsProgressPage.js";
 import { HomePage } from "./pages/HomePage";
 import { PartnersServicesPage } from "./pages/PartnersServicesPage.js";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
@@ -15,11 +20,20 @@ function Placeholder() {
   );
 }
 
-function DevicesPairPlaceholder() {
+function DevicesPlaceholder() {
+  return (
+    <main>
+      <h1>Connected Devices</h1>
+      <p>Connected devices coming soon.</p>
+    </main>
+  );
+}
+
+function OnboardingDevicesPlaceholder() {
   return (
     <main>
       <h1>Connect Your Devices</h1>
-      <p>Device pairing coming soon.</p>
+      <p>Onboarding device setup coming soon.</p>
     </main>
   );
 }
@@ -32,8 +46,15 @@ export function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/partners-services" element={<PartnersServicesPage />} />
+        <Route path="/devices/pair" element={<DevicePairingPage />} />
+        <Route path="/onboarding/devices" element={<OnboardingDevicesPlaceholder />} />
         <Route path="/devices/pair" element={<DevicesPairPlaceholder />} />
-        <Route path="/devices" element={<ConnectedDevicesPage />} />
+        <Route path="/devices" element={<DevicesPlaceholder />} />
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/goals" element={<GoalsProgressPage />} />
+          <Route path="/alerts" element={<AlertsPage />} />
+        </Route>
         <Route path="*" element={<Placeholder />} />
       </Routes>
       <Footer />
