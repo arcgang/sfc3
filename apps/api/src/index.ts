@@ -9,6 +9,7 @@ import { correlationIdMiddleware } from "./middleware/correlationId.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
+import { devicesRouter } from "./api/devicesRoutes.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -29,6 +30,8 @@ const requireAuth = authMiddleware(config.jwtSecret);
 app.get("/api/v1/me", requireAuth, (_req, res) => {
   res.json({ user: res.locals["user"] });
 });
+
+app.use("/api/v1/devices", requireAuth, devicesRouter);
 
 const echoSchema = z.object({
   message: z.string().min(1),

@@ -13,16 +13,22 @@ function Placeholder() {
   );
 }
 
-export function App() {
+function WithFooter({ children }: { children: import("react").ReactNode }) {
   return (
     <>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="*" element={<Placeholder />} />
-      </Routes>
+      {children}
       <Footer />
     </>
+  );
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/privacy" element={<WithFooter><PrivacyPolicy /></WithFooter>} />
+      <Route path="/contact" element={<WithFooter><ContactPage /></WithFooter>} />
+      <Route path="*" element={<WithFooter><Placeholder /></WithFooter>} />
+    </Routes>
   );
 }
