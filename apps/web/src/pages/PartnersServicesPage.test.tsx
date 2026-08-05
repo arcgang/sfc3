@@ -157,24 +157,31 @@ test("Stress Relief service card heading is rendered", () => {
 // ── Service cards — category badges ──────────────────────────────────────────
 
 test("FitPro Training card shows 'Fitness' category badge", () => {
-  const { getAllByText } = renderPartnersServicesPage();
-  // Multiple Fitness badges may exist; at least one must be present
-  expect(getAllByText("Fitness").length).toBeGreaterThanOrEqual(1);
+  renderPartnersServicesPage();
+  const heading = screen.getByRole("heading", { name: "FitPro Training", level: 3 });
+  const card = heading.closest("li") as HTMLElement;
+  expect(card.textContent).toContain("Fitness");
 });
 
 test("NutriGuide card shows 'Nutrition' category badge", () => {
-  const { getAllByText } = renderPartnersServicesPage();
-  expect(getAllByText("Nutrition").length).toBeGreaterThanOrEqual(1);
+  renderPartnersServicesPage();
+  const heading = screen.getByRole("heading", { name: "NutriGuide", level: 3 });
+  const card = heading.closest("li") as HTMLElement;
+  expect(card.textContent).toContain("Nutrition");
 });
 
 test("MindfulMe card shows 'Mental Health' category badge", () => {
-  const { getAllByText } = renderPartnersServicesPage();
-  expect(getAllByText("Mental Health").length).toBeGreaterThanOrEqual(1);
+  renderPartnersServicesPage();
+  const heading = screen.getByRole("heading", { name: "MindfulMe", level: 3 });
+  const card = heading.closest("li") as HTMLElement;
+  expect(card.textContent).toContain("Mental Health");
 });
 
 test("SleepWell Program card shows 'Sleep' category badge", () => {
-  const { getAllByText } = renderPartnersServicesPage();
-  expect(getAllByText("Sleep").length).toBeGreaterThanOrEqual(1);
+  renderPartnersServicesPage();
+  const heading = screen.getByRole("heading", { name: "SleepWell Program", level: 3 });
+  const card = heading.closest("li") as HTMLElement;
+  expect(card.textContent).toContain("Sleep");
 });
 
 // ── Service cards — descriptions ──────────────────────────────────────────────
@@ -237,10 +244,10 @@ test("Stress Relief card shows correct description", () => {
 
 // ── Service cards — Learn More links ─────────────────────────────────────────
 
-test("each service card renders a 'Learn More' link (8 total)", () => {
+test("each service card renders a 'Learn More' button (8 total)", () => {
   const { getAllByRole } = renderPartnersServicesPage();
-  const learnMoreLinks = getAllByRole("link", { name: "Learn More" });
-  expect(learnMoreLinks.length).toBe(8);
+  const learnMoreButtons = getAllByRole("button", { name: "Learn More" });
+  expect(learnMoreButtons.length).toBe(8);
 });
 
 // ── Premium badges ────────────────────────────────────────────────────────────

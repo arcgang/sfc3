@@ -96,7 +96,6 @@ export function PartnersServicesPage() {
           <Link to="/dashboard">📊 Dashboard</Link>
           <Link to="/my-account">👤 My Account</Link>
           <Link to="/partners-services">🤝 Partners & Services</Link>
-          <br />
           <span>Alex Johnson</span>
           <span>alex@example.com</span>
           <Link to="/logout">Log out</Link>
@@ -120,18 +119,21 @@ export function PartnersServicesPage() {
           ))}
         </div>
 
-        <ul>
-          {SERVICES.map((service) => (
-            <li key={service.id}>
-              <span aria-hidden="true">{service.emoji}</span>
-              <h3>{service.name}</h3>
-              <span>{service.category}</span>
-              {service.premiumRequired && <span>Premium</span>}
-              <p>{service.description}</p>
-              <Link to="#">Learn More</Link>
-            </li>
-          ))}
-        </ul>
+        <section aria-labelledby="services-list-heading">
+          <h2 id="services-list-heading" className="sr-only">Available Services</h2>
+          <ul>
+            {SERVICES.map((service) => (
+              <li key={service.id}>
+                <span aria-hidden="true">{service.emoji}</span>
+                <h3>{service.name}</h3>
+                <span>{service.category}</span>
+                {service.premiumRequired && <span>Premium</span>}
+                <p>{service.description}</p>
+                <button type="button">Learn More</button>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         <section aria-labelledby="coming-soon-heading">
           <h2 id="coming-soon-heading">Service Booking Coming Soon</h2>
