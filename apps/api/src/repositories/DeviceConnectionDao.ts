@@ -142,6 +142,82 @@ export class DeviceConnectionDao {
       .run(syncedAt, syncedAt, now, id);
   }
 
+  updateSyncNow(id: string): DeviceConnection {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE device_connections
+            SET connection_status = 'connected', last_sync_at = ?,
+                last_successful_sync_at = ?, updated_at = ?
+          WHERE id = ?`,
+      )
+      .run(now, now, now, id);
+
+    const conn = this.findById(id);
+    if (!conn) {
+      throw new Error(`device_connections UPDATE found no row for id=${id}`);
+    }
+    return conn;
+  }
+
+  findAll(): DeviceConnection[] {
+    const rows = this.db
+      .prepare(
+        `SELECT id, user_id, device_type, device_name, provider, connection_status,
+                last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                created_at, updated_at
+           FROM device_connections
+          ORDER BY created_at ASC`,
+      )
+      .all() as RawRow[];
+    return rows.map((r) => this.mapRow(r));
+  }
+
+  deleteById(id: string): boolean {
+    const result = this.db
+      .prepare(`DELETE FROM device_connections WHERE id = ?`)
+      .run(id);
+    return result.changes > 0;
+  }
+
+  createWithTimestamps(params: {
+    id: string;
+    userId: string;
+    deviceType: DeviceType;
+    deviceName: string;
+    provider: string;
+    connectionStatus: ConnectionStatus;
+    lastSyncAt: string | null;
+    lastSuccessfulSyncAt: string | null;
+    batteryLevel: string | null;
+    connectedSince: string;
+    createdAt: string;
+    updatedAt: string;
+  }): void {
+    this.db
+      .prepare(
+        `INSERT INTO device_connections
+           (id, user_id, device_type, device_name, provider, connection_status,
+            last_sync_at, last_successful_sync_at, battery_level, connected_since,
+            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        params.id,
+        params.userId,
+        params.deviceType,
+        params.deviceName,
+        params.provider,
+        params.connectionStatus,
+        params.lastSyncAt,
+        params.lastSuccessfulSyncAt,
+        params.batteryLevel,
+        params.connectedSince,
+        params.createdAt,
+        params.updatedAt,
+      );
+  }
+
   private mapRow(row: RawRow): DeviceConnection {
     return {
       id: row.id,
