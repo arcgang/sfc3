@@ -21,11 +21,11 @@ authRouter.post(
         ? res.locals["correlationId"]
         : "";
 
-    // Emit security log for every attempt before validation
+    // Emit a mode-agnostic security log for every attempt before validation
     const mode = (req.body as Record<string, unknown>)?.["mode"];
     const email = (req.body as Record<string, unknown>)?.["email"];
     console.log({
-      event: "auth.register",
+      event: "auth.session_attempt",
       mode,
       email: typeof email === "string" ? email.toLowerCase() : email,
       correlationId,

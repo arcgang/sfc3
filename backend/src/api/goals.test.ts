@@ -37,8 +37,8 @@ async function buildApp() {
 
   // Seed a user so FK constraints pass
   db.prepare(
-    "INSERT INTO users (id, email, password_hash, account_status) VALUES (?, ?, ?, 'active')",
-  ).run(USER_ID, "goals-test@example.com", "hashed");
+    "INSERT INTO users (id, email, password_hash, full_name, account_status) VALUES (?, ?, ?, ?, 'active')",
+  ).run(USER_ID, "goals-test@example.com", "hashed", "Test User");
 
   const { correlationIdMiddleware } = await import(
     "../middleware/correlationId.js"
