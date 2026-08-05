@@ -5,18 +5,35 @@ import { getDatabase } from "../db/connection.js";
 import { GoalService } from "../services/GoalService.js";
 import type { ErrorResponse } from "../types/errors.js";
 
-const createGoalSchema = z.object({
-  goalType: z.enum([
-    "steps_daily",
-    "sleep_minutes_daily",
-    "weight_target",
-    "active_minutes_weekly",
-  ]),
-  targetValue: z.number().gt(0),
-  targetUnit: z.string().min(1),
-  cadence: z.enum(["daily", "weekly"]),
-  startDate: z.string().date().optional(),
-});
+const GOAL_TYPE_CADENCE: Record<string, string> = {
+  steps_daily: "daily",
+  sleep_minutes_daily: "daily",
+  active_minutes_weekly: "weekly",
+};
+
+const createGoalSchema = z
+  .object({
+    goalType: z.enum([
+      "steps_daily",
+      "sleep_minutes_daily",
+      "weight_target",
+      "active_minutes_weekly",
+    ]),
+    targetValue: z.number().gt(0),
+    targetUnit: z.string().min(1),
+    cadence: z.enum(["daily", "weekly"]),
+    startDate: z.string().date().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const required = GOAL_TYPE_CADENCE[data.goalType];
+    if (required !== undefined && data.cadence !== required) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${data.goalType} requires cadence '${required}'`,
+        path: ["cadence"],
+      });
+    }
+  });
 
 export const goalsRouter = Router();
 

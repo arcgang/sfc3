@@ -524,3 +524,68 @@ describe("POST /api/v1/goals — validation: invalid values", () => {
     expect(fields).toContain("cadence");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Validation: cadence inconsistent with goalType
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/goals — validation: cadence inconsistent with goalType", () => {
+  it("returns HTTP 422 for steps_daily with cadence='weekly'", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "steps_daily",
+        targetValue: 10000,
+        targetUnit: "steps",
+        cadence: "weekly",
+      });
+    expect(res.status).toBe(422);
+  });
+
+  it("error.details contains field='cadence' for steps_daily with cadence='weekly'", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "steps_daily",
+        targetValue: 10000,
+        targetUnit: "steps",
+        cadence: "weekly",
+      });
+    const fields = (
+      res.body.error.details as Array<{ field: string }>
+    ).map((d) => d.field);
+    expect(fields).toContain("cadence");
+  });
+
+  it("returns HTTP 422 for active_minutes_weekly with cadence='daily'", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "active_minutes_weekly",
+        targetValue: 150,
+        targetUnit: "minutes",
+        cadence: "daily",
+      });
+    expect(res.status).toBe(422);
+  });
+
+  it("accepts weight_target with either daily or weekly cadence", async () => {
+    const app = await buildApp();
+    const res = await supertest(app)
+      .post("/api/v1/goals")
+      .set("Authorization", `Bearer ${makeToken()}`)
+      .send({
+        goalType: "weight_target",
+        targetValue: 70,
+        targetUnit: "kg",
+        cadence: "weekly",
+      });
+    expect(res.status).toBe(201);
+  });
+});
