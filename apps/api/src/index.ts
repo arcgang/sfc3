@@ -10,7 +10,7 @@ import { devicesRouter } from "./api/devicesRoutes.js";
 import { alertsRouter } from "./api/alertsRoutes.js";
 import { goalsRouter } from "./routes/goals.js";
 import { dashboardRouter } from "./api/dashboardRoutes.js";
-import { authRouter } from "./routes/auth.js";
+import { buildAuthRouter } from "./routes/auth.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -25,7 +25,7 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/auth", buildAuthRouter(config.jwtSecret));
 
 const requireAuth = authMiddleware(config.jwtSecret);
 
