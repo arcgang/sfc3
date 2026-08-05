@@ -15,6 +15,7 @@ import express from "express";
 import supertest from "supertest";
 import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const MIGRATIONS_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -55,6 +56,8 @@ afterEach(async () => {
   delete process.env["DB_PATH"];
 });
 
+const TEST_JWT_SECRET = "test-jwt-secret-for-auth-tests";
+
 async function buildApp() {
   const dbPath = join(ctx.tmpDir, "test.db");
   process.env["DB_PATH"] = dbPath;
@@ -62,7 +65,7 @@ async function buildApp() {
   const { migrate } = await import("../db/migrate.js");
   migrate(MIGRATIONS_DIR);
 
-  const { authRouter } = await import("./auth.js");
+  const { buildAuthRouter } = await import("./auth.js");
   const { correlationIdMiddleware } = await import(
     "../middleware/correlationId.js"
   );
@@ -71,7 +74,7 @@ async function buildApp() {
   const app = express();
   app.use(express.json());
   app.use(correlationIdMiddleware);
-  app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/auth", buildAuthRouter(TEST_JWT_SECRET));
   app.use(errorHandler);
   return app;
 }
@@ -277,11 +280,11 @@ describe("POST /api/v1/auth/session — duplicate email → 409", () => {
 // ---------------------------------------------------------------------------
 
 describe("POST /api/v1/auth/session — missing fields → 400/422", () => {
-  it("returns HTTP 400 when mode is not 'register'", async () => {
+  it("returns HTTP 400 when mode is an unrecognised value", async () => {
     const app = await buildApp();
     const res = await supertest(app)
       .post("/api/v1/auth/session")
-      .send({ mode: "login", email: "x@x.com", password: "pass1234", fullName: "Bob" });
+      .send({ mode: "unknown_mode", email: "x@x.com", password: "pass1234", fullName: "Bob" });
 
     expect(res.status).toBe(400);
   });
@@ -398,13 +401,13 @@ describe("POST /api/v1/auth/session — security log emitted on every attempt", 
     expect(hasAttemptEvent).toBe(true);
   });
 
-  it("emits console.log with event 'auth.registration_attempt' when mode is not 'register' (400)", async () => {
+  it("emits console.log with event 'auth.registration_attempt' when mode is unrecognised (400)", async () => {
     const app = await buildApp();
     consoleSpy.mockClear();
 
     await supertest(app)
       .post("/api/v1/auth/session")
-      .send({ mode: "login", email: "x@x.com", password: "pass1234", fullName: "Bob" });
+      .send({ mode: "unknown_mode", email: "x@x.com", password: "pass1234", fullName: "Bob" });
 
     const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
     const hasAttemptEvent = calls.some(
@@ -444,5 +447,394 @@ describe("POST /api/v1/auth/session — security log emitted on every attempt", 
         typeof arg === "object" && arg["event"] === "auth.registration_attempt",
     );
     expect(attemptLog?.["email"]).toBe("alice@example.com");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helper: register a user then attempt login
+// ---------------------------------------------------------------------------
+
+async function registerUser(
+  app: ReturnType<typeof express>,
+  payload = VALID_PAYLOAD,
+) {
+  await supertest(app).post("/api/v1/auth/session").send(payload);
+}
+
+// ---------------------------------------------------------------------------
+// Login — 200 on valid credentials
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/auth/session mode=login — valid credentials → 200", () => {
+  it("returns HTTP 200 for valid email and password", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns data.user.id matching the registered user id", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    await registerUser(app);
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT id FROM users WHERE email = ?")
+      .get(VALID_PAYLOAD.email) as { id: string } | undefined;
+    db.close();
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const body = res.body as { data: { user: { id: string } } };
+    expect(body.data.user.id).toBe(row?.id);
+  });
+
+  it("returns data.user.email matching the registered email (lowercased)", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email.toUpperCase(), password: VALID_PAYLOAD.password });
+
+    const body = res.body as { data: { user: { email: string } } };
+    expect(body.data.user.email).toBe(VALID_PAYLOAD.email.toLowerCase());
+  });
+
+  it("returns data.user.fullName matching the registered fullName", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const body = res.body as { data: { user: { fullName: string } } };
+    expect(body.data.user.fullName).toBe(VALID_PAYLOAD.fullName);
+  });
+
+  it("returns data.accessToken as a non-empty string", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const body = res.body as { data: { accessToken: string } };
+    expect(typeof body.data.accessToken).toBe("string");
+    expect(body.data.accessToken.length).toBeGreaterThan(0);
+  });
+
+  it("accessToken is a valid JWT signed with the server secret and contains sub = user.id", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    await registerUser(app);
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT id FROM users WHERE email = ?")
+      .get(VALID_PAYLOAD.email) as { id: string } | undefined;
+    db.close();
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const body = res.body as { data: { accessToken: string } };
+    const decoded = jwt.verify(body.data.accessToken, TEST_JWT_SECRET) as { sub: string };
+    expect(decoded.sub).toBe(row?.id);
+  });
+
+  it("returns data.expiresAt as an ISO 8601 timestamp in the future", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const before = Date.now();
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const body = res.body as { data: { expiresAt: string } };
+    const expiresMs = new Date(body.data.expiresAt).getTime();
+    expect(expiresMs).toBeGreaterThan(before);
+  });
+
+  it("returns meta.correlationId as a non-empty string", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const body = res.body as { meta: { correlationId: string } };
+    expect(typeof body.meta.correlationId).toBe("string");
+    expect(body.meta.correlationId.length).toBeGreaterThan(0);
+  });
+
+  it("does not expose password_hash in the response", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const bodyText = JSON.stringify(res.body);
+    expect(bodyText.toLowerCase()).not.toContain("password");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Login — 401 on invalid credentials
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/auth/session mode=login — invalid credentials → 401", () => {
+  it("returns HTTP 401 for a wrong password", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: "wrongpassword" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns error.type AUTH_INVALID_CREDENTIALS for a wrong password", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: "wrongpassword" });
+
+    const body = res.body as { error: { type: string } };
+    expect(body.error.type).toBe("AUTH_INVALID_CREDENTIALS");
+  });
+
+  it("returns HTTP 401 for an unknown email", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: "nobody@example.com", password: "somepassword" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("error message does not confirm whether the account exists", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: "nobody@example.com", password: "somepassword" });
+
+    const body = res.body as { error: { details: Array<{ message: string }> } };
+    const message = body.error.details[0]?.message ?? "";
+    expect(message).toBe("Invalid email or password.");
+  });
+
+  it("wrong-password response does not differ structurally from unknown-email response", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const wrongPwRes = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: "wrongpassword" });
+
+    const unknownRes = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: "nobody@example.com", password: "somepassword" });
+
+    expect(wrongPwRes.status).toBe(unknownRes.status);
+    const wBody = wrongPwRes.body as { error: { type: string } };
+    const uBody = unknownRes.body as { error: { type: string } };
+    expect(wBody.error.type).toBe(uBody.error.type);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Login — engagement event recorded on success
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/auth/session mode=login — engagement event recorded", () => {
+  it("inserts a login engagement event with event_type='login' on successful login", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    await registerUser(app);
+
+    const db = new Database(dbPath);
+    const userId = (
+      db.prepare("SELECT id FROM users WHERE email = ?").get(VALID_PAYLOAD.email) as { id: string }
+    ).id;
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const row = db
+      .prepare(
+        "SELECT event_type, user_id FROM engagement_events WHERE user_id = ? AND event_type = 'login'",
+      )
+      .get(userId) as { event_type: string; user_id: string } | undefined;
+    db.close();
+
+    expect(row).toBeDefined();
+    expect(row?.event_type).toBe("login");
+    expect(row?.user_id).toBe(userId);
+  });
+
+  it("does not insert a login engagement event when credentials are wrong", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    await registerUser(app);
+
+    const db = new Database(dbPath);
+    const userId = (
+      db.prepare("SELECT id FROM users WHERE email = ?").get(VALID_PAYLOAD.email) as { id: string }
+    ).id;
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: "wrongpassword" });
+
+    const count = (
+      db
+        .prepare(
+          "SELECT COUNT(*) as n FROM engagement_events WHERE user_id = ? AND event_type = 'login'",
+        )
+        .get(userId) as { n: number }
+    ).n;
+    db.close();
+
+    expect(count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Login — structured console log emitted on every attempt
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/auth/session mode=login — security log emitted on every attempt", () => {
+  it("emits console.log with event 'auth.login_attempt' on a successful login", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+    consoleSpy.mockClear();
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: VALID_PAYLOAD.password });
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const hasEvent = calls.some(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.login_attempt",
+    );
+    expect(hasEvent).toBe(true);
+  });
+
+  it("emits console.log with event 'auth.login_attempt' on a failed login (wrong password)", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+    consoleSpy.mockClear();
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email, password: "wrongpassword" });
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const hasEvent = calls.some(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.login_attempt",
+    );
+    expect(hasEvent).toBe(true);
+  });
+
+  it("emits console.log with event 'auth.login_attempt' on a failed login (unknown email)", async () => {
+    const app = await buildApp();
+    consoleSpy.mockClear();
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: "ghost@example.com", password: "somepassword" });
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const hasEvent = calls.some(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.login_attempt",
+    );
+    expect(hasEvent).toBe(true);
+  });
+
+  it("login attempt log includes the email address (lowercased)", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+    consoleSpy.mockClear();
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "login", email: VALID_PAYLOAD.email.toUpperCase(), password: VALID_PAYLOAD.password });
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const loginLog = calls.find(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.login_attempt",
+    );
+    expect(loginLog?.["email"]).toBe(VALID_PAYLOAD.email.toLowerCase());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Password reset request — always returns generic accepted response
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/auth/session mode=password_reset_request", () => {
+  it("returns HTTP 200 for a known email", async () => {
+    const app = await buildApp();
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: VALID_PAYLOAD.email });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns HTTP 200 for an unknown email (does not reveal account existence)", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: "ghost@example.com" });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns the generic instructional message regardless of account existence", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: "ghost@example.com" });
+
+    const body = res.body as { data: { message: string } };
+    expect(body.data.message).toBe(
+      "If the account exists, password reset instructions have been sent.",
+    );
+  });
+
+  it("returns 422 when email is missing from password_reset_request", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request" });
+
+    expect(res.status).toBe(422);
   });
 });
