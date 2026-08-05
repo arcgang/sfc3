@@ -119,7 +119,9 @@ function DeviceCard({ device, onSyncSuccess }: DeviceCardProps) {
           className={
             device.status === "connected"
               ? styles.statusSynced
-              : styles.statusError
+              : device.status === "pending"
+                ? styles.statusWarning
+                : styles.statusError
           }
         >
           {statusBadge(device.status)}
@@ -207,18 +209,7 @@ export function ConnectedDevicesPage() {
   }, []);
 
   return (
-    <div className={styles.page}>
-      <aside className={styles.sidebar}>
-        <nav aria-label="Sidebar navigation" className={styles.sidebarNav}>
-          <Link to="/dashboard" className={styles.navLink}>📊 Dashboard</Link>
-          <Link to="/my-account" className={styles.navLink}>👤 My Account</Link>
-          <Link to="/partners-services" className={styles.navLink}>🤝 Partners &amp; Services</Link>
-          <span className={styles.userName}>Alex Johnson</span>
-          <span className={styles.userEmail}>alex@example.com</span>
-          <Link to="/logout" className={styles.navLink}>Log out</Link>
-        </nav>
-      </aside>
-
+    <div className={styles.pageContent}>
       <main className={styles.main}>
         <h1 className={styles.pageHeading}>Connected Devices</h1>
         <p className={styles.pageSubheading}>

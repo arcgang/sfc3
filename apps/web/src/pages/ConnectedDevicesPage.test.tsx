@@ -278,28 +278,28 @@ test("renders a 'Retry' button when the API call fails", async () => {
 
 test("sidebar nav renders '📊 Dashboard' link", async () => {
   mockApiFetch.mockResolvedValueOnce(makeResponse([]));
-  renderPage();
+  renderViaApp("/devices");
   await screen.findByRole("heading", { name: "Connected Devices", level: 1 });
   screen.getByRole("link", { name: "📊 Dashboard" });
 });
 
 test("sidebar nav renders '👤 My Account' link", async () => {
   mockApiFetch.mockResolvedValueOnce(makeResponse([]));
-  renderPage();
+  renderViaApp("/devices");
   await screen.findByRole("heading", { name: "Connected Devices", level: 1 });
   screen.getByRole("link", { name: "👤 My Account" });
 });
 
 test("sidebar nav renders '🤝 Partners & Services' link", async () => {
   mockApiFetch.mockResolvedValueOnce(makeResponse([]));
-  renderPage();
+  renderViaApp("/devices");
   await screen.findByRole("heading", { name: "Connected Devices", level: 1 });
   screen.getByRole("link", { name: "🤝 Partners & Services" });
 });
 
 test("sidebar nav renders 'Log out' link", async () => {
   mockApiFetch.mockResolvedValueOnce(makeResponse([]));
-  renderPage();
+  renderViaApp("/devices");
   await screen.findByRole("heading", { name: "Connected Devices", level: 1 });
   screen.getByRole("link", { name: "Log out" });
 });

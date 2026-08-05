@@ -30,11 +30,11 @@ export function App() {
         <Route path="/partners-services" element={<PartnersServicesPage />} />
         <Route path="/onboarding/devices" element={<Navigate to="/devices/pair" replace />} />
         <Route path="/devices/pair" element={<DevicePairingPage />} />
-        <Route path="/devices" element={<ConnectedDevicesPage />} />
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/goals" element={<GoalsProgressPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
+          <Route path="/devices" element={<ConnectedDevicesPage />} />
         </Route>
         <Route path="*" element={<Placeholder />} />
       </Routes>
