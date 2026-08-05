@@ -35,6 +35,15 @@ function DevicesPlaceholder() {
   );
 }
 
+function OnboardingDevicesPlaceholder() {
+  return (
+    <main>
+      <h1>Connect Your Devices</h1>
+      <p>Onboarding device setup coming soon.</p>
+    </main>
+  );
+}
+
 export function App() {
   return (
     <>
@@ -43,6 +52,7 @@ export function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/partners-services" element={<PartnersServicesPage />} />
+        <Route path="/onboarding/devices" element={<OnboardingDevicesPlaceholder />} />
         <Route path="/devices/pair" element={<DevicesPairPlaceholder />} />
         <Route path="/devices" element={<DevicesPlaceholder />} />
         <Route element={<Layout />}>
