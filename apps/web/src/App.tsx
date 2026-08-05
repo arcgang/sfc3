@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { Footer } from "./components/Footer.js";
 import { ContactPage } from "./pages/ContactPage.js";
 import { HomePage } from "./pages/HomePage";
@@ -14,6 +14,7 @@ function Placeholder() {
 }
 
 export function App() {
+  const { pathname } = useLocation();
   return (
     <>
       <Routes>
@@ -22,7 +23,7 @@ export function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="*" element={<Placeholder />} />
       </Routes>
-      <Footer />
+      {pathname !== "/" && <Footer />}
     </>
   );
 }
