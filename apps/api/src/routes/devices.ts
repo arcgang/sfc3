@@ -7,6 +7,98 @@ import { SyncService, type SyncResult } from "../services/SyncService.js";
 import { validateBody } from "../middleware/validate.js";
 import type { ErrorResponse } from "../types/errors.js";
 
+interface SeedDevice {
+  id: string;
+  userId: string;
+  deviceName: string;
+  provider: string;
+  deviceType: DeviceType;
+  connectionStatus: "connected" | "disconnected" | "error" | "pending";
+  lastSyncAtOffset: number;
+  batteryLevel: string;
+  connectedSince: string;
+}
+
+// Each seed device gets its own user because device_connections has UNIQUE(user_id, device_type)
+// and two seed devices share the same deviceType ('smartwatch').
+const SEED_DEVICES: SeedDevice[] = [
+  {
+    id: "seed-device-fitbit-charge-5",
+    userId: "seed-user-fitbit",
+    deviceName: "Fitbit Charge 5",
+    provider: "Fitbit",
+    deviceType: "smartwatch",
+    connectionStatus: "connected",
+    lastSyncAtOffset: -2 * 60 * 60 * 1000,
+    batteryLevel: "78%",
+    connectedSince: "2026-01-15T00:00:00.000Z",
+  },
+  {
+    id: "seed-device-withings-body-plus",
+    userId: "seed-user-withings",
+    deviceName: "Withings Body+",
+    provider: "Withings",
+    deviceType: "smart_scale",
+    connectionStatus: "disconnected",
+    lastSyncAtOffset: -18 * 60 * 60 * 1000,
+    batteryLevel: "Good",
+    connectedSince: "2026-01-15T00:00:00.000Z",
+  },
+  {
+    id: "seed-device-apple-watch-series-8",
+    userId: "seed-user-apple",
+    deviceName: "Apple Watch Series 8",
+    provider: "Apple",
+    deviceType: "smartwatch",
+    connectionStatus: "error",
+    lastSyncAtOffset: -3 * 24 * 60 * 60 * 1000,
+    batteryLevel: "Unknown",
+    connectedSince: "2025-12-20T00:00:00.000Z",
+  },
+];
+
+function seedDevicesIfEmpty(db: Database.Database): void {
+  const dao = new DeviceConnectionDao(db);
+  const all = dao.findAll();
+  if (all.length > 0) return;
+
+  const now = new Date().toISOString();
+  const baseTime = Date.now();
+
+  for (const device of SEED_DEVICES) {
+    const existingUser = db
+      .prepare(`SELECT id FROM users WHERE id = ?`)
+      .get(device.userId) as { id: string } | undefined;
+
+    if (!existingUser) {
+      db.prepare(
+        `INSERT INTO users (id, email, password_hash, account_status)
+         VALUES (?, ?, ?, 'active')`,
+      ).run(
+        device.userId,
+        `${device.userId}@seed.local`,
+        "$2b$10$placeholder-hash-for-seed-user-only",
+      );
+    }
+
+    const lastSyncAt = new Date(baseTime + device.lastSyncAtOffset).toISOString();
+    dao.createWithTimestamps({
+      id: device.id,
+      userId: device.userId,
+      deviceType: device.deviceType,
+      deviceName: device.deviceName,
+      provider: device.provider,
+      connectionStatus: device.connectionStatus,
+      lastSyncAt,
+      lastSuccessfulSyncAt: device.connectionStatus === "connected" ? lastSyncAt : null,
+      batteryLevel: device.batteryLevel,
+      connectedSince: device.connectedSince,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+}
+
 export interface SyncServiceLike {
   sync(params: {
     deviceConnectionId: string;
@@ -256,6 +348,96 @@ export function createDevicesRouter(
       });
     },
   );
+
+  // GET / — returns all device rows (MVP: no auth required)
+  // intentionally public: returns all devices for the MVP dashboard
+  router.get("/", (req: Request, res: Response): void => {
+    const correlationId =
+      typeof res.locals["correlationId"] === "string"
+        ? res.locals["correlationId"]
+        : "";
+
+    const db = getDatabase();
+    seedDevicesIfEmpty(db);
+    const store = new DeviceConnectionDao(db);
+    const devices = store.findAll();
+
+    res.status(200).json({
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      data: { devices: devices.map(toDeviceDto) },
+    });
+  });
+
+  // POST /:id/reconnect — set status to connected and refresh last_sync_at
+  router.post("/:id/reconnect", (req: Request, res: Response): void => {
+    const { id } = req.params as { id: string };
+    const correlationId =
+      typeof res.locals["correlationId"] === "string"
+        ? res.locals["correlationId"]
+        : "";
+
+    const db = getDatabase();
+    const store = new DeviceConnectionDao(db);
+    const connection = store.findById(id);
+
+    if (!connection) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: {
+          type: "NOT_FOUND",
+          details: [{ code: "NOT_FOUND", message: "Device connection not found." }],
+        },
+      };
+      res.status(404).json(body);
+      return;
+    }
+
+    store.updateSyncNow(id);
+    const updated = store.findById(id);
+    if (!updated) {
+      throw new Error(`device_connections row not found after reconnect for id=${id}`);
+    }
+
+    console.log({
+      event: "device.reconnected",
+      deviceId: id,
+      deviceType: updated.deviceType,
+      correlationId,
+    });
+
+    res.status(200).json({
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      data: { device: toDeviceDto(updated) },
+    });
+  });
+
+  // DELETE /:id — remove device row
+  router.delete("/:id", (req: Request, res: Response): void => {
+    const { id } = req.params as { id: string };
+    const correlationId =
+      typeof res.locals["correlationId"] === "string"
+        ? res.locals["correlationId"]
+        : "";
+
+    const db = getDatabase();
+    const store = new DeviceConnectionDao(db);
+    const deleted = store.deleteById(id);
+
+    if (!deleted) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: {
+          type: "NOT_FOUND",
+          details: [{ code: "NOT_FOUND", message: "Device connection not found." }],
+        },
+      };
+      res.status(404).json(body);
+      return;
+    }
+
+    console.log({ event: "device.deleted", deviceId: id, correlationId });
+    res.status(204).send();
+  });
 
   return router;
 }
