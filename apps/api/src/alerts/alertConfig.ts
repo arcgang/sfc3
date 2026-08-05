@@ -1,6 +1,6 @@
 export interface AlertThresholdConfig {
-  staleAfterHours: { smartwatch: number; smart_scale: number };
-  goalRiskThreshold: number;
+  staleAfterHours: Record<string, number>;
+  goal_risk: number;
   abnormalReadingThresholds: Record<string, { min?: number; max?: number }>;
 }
 
@@ -13,7 +13,7 @@ export function loadAlertThresholdConfig(
   const smart_scale = env["ALERT_STALE_SMART_SCALE_HOURS"]
     ? Number(env["ALERT_STALE_SMART_SCALE_HOURS"])
     : 18;
-  const goalRiskThreshold = env["ALERT_GOAL_RISK_THRESHOLD"]
+  const goal_risk = env["ALERT_GOAL_RISK_THRESHOLD"]
     ? Number(env["ALERT_GOAL_RISK_THRESHOLD"])
     : 0.75;
 
@@ -26,5 +26,5 @@ export function loadAlertThresholdConfig(
     }
   }
 
-  return { staleAfterHours: { smartwatch, smart_scale }, goalRiskThreshold, abnormalReadingThresholds };
+  return { staleAfterHours: { smartwatch, smart_scale }, goal_risk, abnormalReadingThresholds };
 }
