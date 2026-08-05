@@ -39,6 +39,10 @@ export class UserRepository {
       )
       .run(input.id, input.email, input.fullName, input.passwordHash, now, now);
 
-    return this.findByEmail(input.email) as UserRow;
+    const row = this.findByEmail(input.email);
+    if (row === undefined) {
+      throw new Error(`User insert succeeded but email ${input.email} was not found on re-read`);
+    }
+    return row;
   }
 }
