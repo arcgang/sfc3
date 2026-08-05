@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext.js";
 import { ConnectedDevicesPage } from "./pages/ConnectedDevicesPage.js";
 import { Footer } from "./components/Footer.js";
 import { Layout } from "./components/Layout.js";
@@ -8,6 +9,7 @@ import { DashboardPage } from "./pages/DashboardPage.js";
 import { DevicePairingPage } from "./pages/DevicePairingPage.js";
 import { GoalsProgressPage } from "./pages/GoalsProgressPage.js";
 import { HomePage } from "./pages/HomePage";
+import { LoginPage } from "./pages/LoginPage.js";
 import { PartnersServicesPage } from "./pages/PartnersServicesPage.js";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 
@@ -22,9 +24,10 @@ function Placeholder() {
 
 export function App() {
   return (
-    <>
+    <AuthProvider>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/partners-services" element={<PartnersServicesPage />} />
@@ -39,6 +42,6 @@ export function App() {
         <Route path="*" element={<Placeholder />} />
       </Routes>
       <Footer />
-    </>
+    </AuthProvider>
   );
 }
