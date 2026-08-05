@@ -1,7 +1,8 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { Footer } from "./components/Footer.js";
 import { ContactPage } from "./pages/ContactPage.js";
 import { HomePage } from "./pages/HomePage";
+import { PartnersServicesPage } from "./pages/PartnersServicesPage.js";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 
 function Placeholder() {
@@ -14,15 +15,19 @@ function Placeholder() {
 }
 
 export function App() {
+  const location = useLocation();
+  // HomePage renders its own footer; suppress the global one there to avoid duplicate links
+  const showGlobalFooter = location.pathname !== "/";
   return (
     <>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/partners-services" element={<PartnersServicesPage />} />
         <Route path="*" element={<Placeholder />} />
       </Routes>
-      <Footer />
+      {showGlobalFooter && <Footer />}
     </>
   );
 }
