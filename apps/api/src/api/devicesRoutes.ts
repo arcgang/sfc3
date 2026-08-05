@@ -171,6 +171,11 @@ function handleDisconnect(
     return;
   }
 
+  if (existing.connectionStatus !== "connected") {
+    sendConflict(res, correlationId, `Cannot disconnect: device ${deviceType} is not in a connected state.`);
+    return;
+  }
+
   const updated = store.updateStatus(existing.id, "disconnected");
 
   console.log({

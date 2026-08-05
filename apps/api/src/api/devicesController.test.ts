@@ -544,6 +544,34 @@ describe("PUT /api/v1/devices/connections — action=disconnect", () => {
     const body = res.body as { data: { device: { status: string } } };
     expect(body.data.device.status).toBe("disconnected");
   });
+
+  it("returns 409 when attempting to disconnect a device that is already disconnected", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "user-disc-3";
+    await seedUser(dbPath, userId);
+    const token = makeToken(userId);
+
+    // Connect then disconnect
+    await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smartwatch", action: "connect" });
+    await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smartwatch", action: "disconnect" });
+
+    // Attempt to disconnect again
+    const res = await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smartwatch", action: "disconnect" });
+
+    expect(res.status).toBe(409);
+    const body = res.body as { error: { type: string } };
+    expect(body.error.type).toBe("DEVICE_STATE_CONFLICT");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -612,9 +640,9 @@ describe("PUT /api/v1/devices/connections — action=connect from error state", 
     const db = new Database(dbPath);
     db.prepare(
       `INSERT INTO device_connections
-         (id, user_id, device_type, connection_status, last_sync_at, created_at, updated_at)
-       VALUES ('err-row-1', ?, 'smartwatch', 'error', NULL, ?, ?)`,
-    ).run(userId, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP);
+         (id, user_id, device_type, connection_status, last_sync_at, connected_since, created_at, updated_at)
+       VALUES ('err-row-1', ?, 'smartwatch', 'error', NULL, ?, ?, ?)`,
+    ).run(userId, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP);
     db.close();
 
     const token = makeToken(userId);
@@ -640,5 +668,76 @@ describe("PUT /api/v1/devices/connections — action=connect from error state", 
     expect(reconnectedLog).toBeDefined();
     if (!reconnectedLog) throw new Error("device.reconnected log not found");
     expect((reconnectedLog[0] as Record<string, unknown>)["event"]).toBe("device.reconnected");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// action=connect from pending state — treated as upgrade (emits device.reconnected)
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/devices/connections — action=connect from pending state", () => {
+  it("returns 200 and status=connected when connecting a device in pending state", async () => {
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "user-pending-1";
+
+    const app = await buildApp();
+    await seedUser(dbPath, userId);
+
+    // Insert a pre-existing row in pending state directly
+    const db = new Database(dbPath);
+    db.prepare(
+      `INSERT INTO device_connections
+         (id, user_id, device_type, connection_status, last_sync_at, connected_since, created_at, updated_at)
+       VALUES ('pending-row-1', ?, 'smartwatch', 'pending', NULL, ?, ?, ?)`,
+    ).run(userId, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smartwatch", action: "connect" });
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: { device: { status: string } } };
+    expect(body.data.device.status).toBe("connected");
+  });
+
+  it("emits device.reconnected (not device.paired) when upgrading a pending row", async () => {
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "user-pending-2";
+
+    const app = await buildApp();
+    await seedUser(dbPath, userId);
+
+    const db = new Database(dbPath);
+    db.prepare(
+      `INSERT INTO device_connections
+         (id, user_id, device_type, connection_status, last_sync_at, connected_since, created_at, updated_at)
+       VALUES ('pending-row-2', ?, 'smartwatch', 'pending', NULL, ?, ?, ?)`,
+    ).run(userId, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP, FIXTURE_TIMESTAMP);
+    db.close();
+
+    const token = makeToken(userId);
+    await supertest(app)
+      .put("/api/v1/devices/connections")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ deviceType: "smartwatch", action: "connect" });
+
+    const calls = ctx.consoleSpy.mock.calls;
+    const pairedLog = calls.find(
+      (call) =>
+        typeof call[0] === "object" &&
+        call[0] !== null &&
+        (call[0] as Record<string, unknown>)["event"] === "device.paired",
+    );
+    const reconnectedLog = calls.find(
+      (call) =>
+        typeof call[0] === "object" &&
+        call[0] !== null &&
+        (call[0] as Record<string, unknown>)["event"] === "device.reconnected",
+    );
+    expect(pairedLog).toBeUndefined();
+    expect(reconnectedLog).toBeDefined();
   });
 });
