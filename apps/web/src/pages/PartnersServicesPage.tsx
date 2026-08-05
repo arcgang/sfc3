@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
+import styles from "./PartnersServicesPage.module.css";
 
-/* text: #111111 on background: #ffffff — contrast ratio ≈ 18.1:1, well above WCAG AA 4.5:1 */
+/* text: var(--color-text-primary) on var(--color-bg-white) — contrast ratio ≈ 18.1:1, well above WCAG AA 4.5:1 */
 
 interface ServiceCard {
   id: string;
@@ -90,7 +91,7 @@ const CATEGORIES = ["All", "Fitness", "Nutrition", "Mental Health", "Sleep"] as 
 
 export function PartnersServicesPage() {
   return (
-    <div style={{ display: "flex", color: "#111111", backgroundColor: "#ffffff" }}>
+    <div className={styles.page}>
       <aside>
         <nav aria-label="Sidebar navigation">
           <Link to="/dashboard">📊 Dashboard</Link>
@@ -111,13 +112,14 @@ export function PartnersServicesPage() {
           <button type="button">Upgrade to Premium</button>
         </section>
 
-        <div role="group" aria-label="Category filters">
+        <fieldset>
+          <legend>Category filters</legend>
           {CATEGORIES.map((cat) => (
             <button key={cat} type="button">
               {cat}
             </button>
           ))}
-        </div>
+        </fieldset>
 
         <section aria-labelledby="services-list-heading">
           <h2 id="services-list-heading" className="sr-only">Available Services</h2>
@@ -129,7 +131,7 @@ export function PartnersServicesPage() {
                 <span>{service.category}</span>
                 {service.premiumRequired && <span>Premium</span>}
                 <p>{service.description}</p>
-                <a href="#">Learn More</a>
+                <a href="#learn-more-noop" onClick={(e) => e.preventDefault()}>Learn More</a>
               </li>
             ))}
           </ul>
