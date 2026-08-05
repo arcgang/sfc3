@@ -1,6 +1,9 @@
 import { Route, Routes } from "react-router-dom";
 import { Footer } from "./components/Footer.js";
+import { Layout } from "./components/Layout.js";
 import { ContactPage } from "./pages/ContactPage.js";
+import { DashboardPage } from "./pages/DashboardPage.js";
+import { GoalsProgressPage } from "./pages/GoalsProgressPage.js";
 import { HomePage } from "./pages/HomePage";
 import { PartnersServicesPage } from "./pages/PartnersServicesPage.js";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
@@ -42,6 +45,10 @@ export function App() {
         <Route path="/partners-services" element={<PartnersServicesPage />} />
         <Route path="/devices/pair" element={<DevicesPairPlaceholder />} />
         <Route path="/devices" element={<DevicesPlaceholder />} />
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/goals" element={<GoalsProgressPage />} />
+        </Route>
         <Route path="*" element={<Placeholder />} />
       </Routes>
       <Footer />
