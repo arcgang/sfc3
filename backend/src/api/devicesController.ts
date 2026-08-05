@@ -78,18 +78,23 @@ export async function handleDeviceConnection(
 
   if (action === "connect") {
     if (existing) {
-      // Upsert: update to connected
       row = repo.updateStatus(existing.id, "connected");
+      console.log({
+        event: "device.reconnected",
+        deviceType,
+        userId,
+        correlationId,
+      });
     } else {
       const provider = DEVICE_TYPE_PROVIDER[deviceType];
       row = repo.insert(userId, deviceType, provider, providerAccountRef ?? null);
+      console.log({
+        event: "device.paired",
+        deviceType,
+        userId,
+        correlationId,
+      });
     }
-    console.log({
-      event: "device.paired",
-      deviceType,
-      userId,
-      correlationId,
-    });
   } else if (action === "reconnect") {
     if (!existing) {
       deviceConflictResponse(
@@ -106,7 +111,7 @@ export async function handleDeviceConnection(
       correlationId,
     });
   } else if (action === "disconnect") {
-    if (!existing) {
+    if (!existing || existing.connection_status === "disconnected") {
       deviceConflictResponse(
         res,
         "Cannot disconnect a device that is not connected.",
@@ -148,7 +153,7 @@ export async function handleDeviceConnection(
       device: {
         deviceType: row.device_type,
         status: row.connection_status,
-        lastSyncAt: row.last_synced_at,
+        lastSyncAt: row.last_sync_at,
         stale: false,
       },
     },

@@ -11,7 +11,7 @@ export interface DeviceConnectionRow {
   battery: string | null;
   connected_since: string;
   provider_account_ref: string | null;
-  last_synced_at: string | null;
+  last_sync_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +29,7 @@ export class DeviceConnectionRepository {
       .prepare(
         `SELECT id, user_id, device_type, connection_status, provider,
                 device_name, battery, connected_since,
-                provider_account_ref, last_synced_at, created_at, updated_at
+                provider_account_ref, last_sync_at, created_at, updated_at
          FROM device_connections
          WHERE user_id = ? AND device_type = ?`,
       )
@@ -48,7 +48,7 @@ export class DeviceConnectionRepository {
       .prepare(
         `INSERT INTO device_connections
            (id, user_id, device_type, connection_status, provider, connected_since,
-            provider_account_ref, last_synced_at, created_at, updated_at)
+            provider_account_ref, last_sync_at, created_at, updated_at)
          VALUES (?, ?, ?, 'connected', ?, ?, ?, NULL, ?, ?)`,
       )
       .run(id, userId, deviceType, provider, now, providerAccountRef, now, now);
@@ -69,7 +69,7 @@ export class DeviceConnectionRepository {
       .prepare(
         `SELECT id, user_id, device_type, connection_status, provider,
                 device_name, battery, connected_since,
-                provider_account_ref, last_synced_at, created_at, updated_at
+                provider_account_ref, last_sync_at, created_at, updated_at
          FROM device_connections WHERE id = ?`,
       )
       .get(id) as DeviceConnectionRow;
