@@ -14,7 +14,7 @@ import { apiFetch } from "../api.js";
 
 const mockApiFetch = apiFetch as ReturnType<typeof vi.fn>;
 
-const EMPTY_GOALS_RESPONSE = { data: { goals: [] } };
+const EMPTY_GOALS_RESPONSE = { data: { goals: [], insights: [] } };
 
 beforeEach(() => {
   mockApiFetch.mockReset();
@@ -132,10 +132,16 @@ test("renders goals returned by GET /goals", async () => {
           targetUnit: "steps",
           cadence: "daily",
           startDate: "2026-01-15",
-          status: "active",
+          status: "on_track",
+          currentDisplay: "8,543 steps",
+          progressPercent: 85,
+          weekOverWeekChange: "Up 5% from last week",
+          section: "active",
           createdAt: "2026-01-15T00:00:00.000Z",
+          endDate: null,
         },
       ],
+      insights: [],
     },
   });
 
@@ -147,7 +153,7 @@ test("renders goals returned by GET /goals", async () => {
 
   const card = screen.getByText(/Walk steps daily/).closest("li");
   expect(card).not.toBeNull();
-  within(card!).getByText(/10000/);
+  within(card!).getByText("8,543 steps");
 });
 
 // ── Create New Goal button ────────────────────────────────────────────────────
@@ -282,8 +288,10 @@ test("successful goal creation adds the goal to the list", async () => {
           targetUnit: "steps",
           cadence: "daily",
           startDate: "2026-01-15",
-          status: "active",
+          status: "on_track",
           createdAt: "2026-01-15T00:00:00.000Z",
+          endDate: null,
+          section: "active",
         },
       },
     });
@@ -316,8 +324,10 @@ test("successful goal creation calls POST /goals with correct payload", async ()
           targetUnit: "minutes",
           cadence: "daily",
           startDate: "2026-01-15",
-          status: "active",
+          status: "on_track",
           createdAt: "2026-01-15T00:00:00.000Z",
+          endDate: null,
+          section: "active",
         },
       },
     });
@@ -374,7 +384,12 @@ test("new goal appears at top of existing goals list after creation", async () =
     targetUnit: "lbs",
     cadence: "daily" as const,
     startDate: "2026-01-01",
-    status: "active" as const,
+    status: "at_risk" as const,
+    currentDisplay: "2.3 lbs lost / 5 lbs",
+    progressPercent: 46,
+    weekOverWeekChange: "Behind pace for monthly target",
+    section: "active" as const,
+    endDate: null,
     createdAt: "2026-01-01T00:00:00.000Z",
   };
   const newGoal = {
@@ -384,12 +399,14 @@ test("new goal appears at top of existing goals list after creation", async () =
     targetUnit: "minutes",
     cadence: "weekly" as const,
     startDate: "2026-01-15",
-    status: "active" as const,
+    status: "on_track" as const,
+    section: "active" as const,
+    endDate: null,
     createdAt: "2026-01-15T00:00:00.000Z",
   };
 
   mockApiFetch
-    .mockResolvedValueOnce({ data: { goals: [existingGoal] } }) // GET on mount
+    .mockResolvedValueOnce({ data: { goals: [existingGoal], insights: [] } }) // GET on mount
     .mockResolvedValueOnce({ data: { goal: newGoal } }); // POST
 
   renderGoalsPage();
@@ -410,4 +427,256 @@ test("new goal appears at top of existing goals list after creation", async () =
   const items = screen.getAllByRole("listitem");
   expect(items[0]?.textContent).toMatch(/Exercise active minutes weekly/);
   expect(items[1]?.textContent).toMatch(/Weight target/);
+});
+
+// ── Five design-example goals render correctly ────────────────────────────────
+
+const FIVE_DESIGN_GOALS = [
+  {
+    id: "goal-steps",
+    goalType: "steps_daily",
+    targetValue: 10000,
+    targetUnit: "steps",
+    cadence: "daily" as const,
+    startDate: "2026-01-15",
+    status: "on_track" as const,
+    currentDisplay: "8,543 steps",
+    progressPercent: 85,
+    weekOverWeekChange: "Up 5% from last week",
+    section: "active" as const,
+    endDate: null,
+    createdAt: "2026-01-15T00:00:00.000Z",
+  },
+  {
+    id: "goal-sleep",
+    goalType: "sleep_minutes_daily",
+    targetValue: 420,
+    targetUnit: "minutes",
+    cadence: "daily" as const,
+    startDate: "2026-01-10",
+    status: "on_track" as const,
+    currentDisplay: "7h 23m",
+    progressPercent: 105,
+    weekOverWeekChange: "Improved by 32 minutes this week",
+    section: "active" as const,
+    endDate: null,
+    createdAt: "2026-01-10T00:00:00.000Z",
+  },
+  {
+    id: "goal-weight",
+    goalType: "weight_target",
+    targetValue: 5,
+    targetUnit: "lbs",
+    cadence: "daily" as const,
+    startDate: "2026-01-01",
+    status: "at_risk" as const,
+    currentDisplay: "2.3 lbs",
+    progressPercent: 46,
+    weekOverWeekChange: "Behind pace for monthly target",
+    section: "active" as const,
+    endDate: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "goal-exercise",
+    goalType: "active_minutes_weekly",
+    targetValue: 150,
+    targetUnit: "minutes",
+    cadence: "weekly" as const,
+    startDate: "2026-01-08",
+    status: "on_track" as const,
+    currentDisplay: "2h 7m",
+    progressPercent: 85,
+    weekOverWeekChange: "3 days remaining this week",
+    section: "active" as const,
+    endDate: null,
+    createdAt: "2026-01-08T00:00:00.000Z",
+  },
+  {
+    id: "goal-water",
+    goalType: "water_daily",
+    targetValue: 8,
+    targetUnit: "glasses",
+    cadence: "daily" as const,
+    startDate: "2026-01-05",
+    status: "missed" as const,
+    currentDisplay: "4/8 glasses",
+    progressPercent: 50,
+    weekOverWeekChange: "Missed yesterday — try to catch up today",
+    section: "active" as const,
+    endDate: null,
+    createdAt: "2026-01-05T00:00:00.000Z",
+  },
+];
+
+test("renders all five design-example goals with correct names", async () => {
+  mockApiFetch.mockResolvedValueOnce({ data: { goals: FIVE_DESIGN_GOALS, insights: [] } });
+  renderGoalsPage();
+
+  await waitFor(() => {
+    screen.getByText("Walk steps daily");
+  });
+  screen.getByText("Sleep minutes daily");
+  screen.getByText("Weight target");
+  screen.getByText("Exercise active minutes weekly");
+  // water_daily falls back to raw type string since it's not in the label map
+  screen.getByText("water_daily");
+});
+
+test("each of the five design goals shows its status badge", async () => {
+  mockApiFetch.mockResolvedValueOnce({ data: { goals: FIVE_DESIGN_GOALS, insights: [] } });
+  renderGoalsPage();
+
+  await waitFor(() => {
+    screen.getByText("Walk steps daily");
+  });
+
+  const onTrackBadges = screen.getAllByText("On Track");
+  expect(onTrackBadges.length).toBe(3);
+  screen.getByText("At Risk");
+  screen.getByText("Missed");
+});
+
+test("steps goal card shows currentDisplay from API", async () => {
+  mockApiFetch.mockResolvedValueOnce({ data: { goals: FIVE_DESIGN_GOALS, insights: [] } });
+  renderGoalsPage();
+
+  await waitFor(() => screen.getByText("Walk steps daily"));
+
+  const stepsCard = screen.getByText("Walk steps daily").closest("li");
+  expect(stepsCard).not.toBeNull();
+  within(stepsCard!).getByText("8,543 steps");
+});
+
+test("sleep goal card shows week-over-week improvement text", async () => {
+  mockApiFetch.mockResolvedValueOnce({ data: { goals: FIVE_DESIGN_GOALS, insights: [] } });
+  renderGoalsPage();
+
+  await waitFor(() => screen.getByText("Sleep minutes daily"));
+
+  const sleepCard = screen.getByText("Sleep minutes daily").closest("li");
+  expect(sleepCard).not.toBeNull();
+  within(sleepCard!).getByText("Improved by 32 minutes this week");
+});
+
+test("weight goal card shows At Risk badge and behind-pace message", async () => {
+  mockApiFetch.mockResolvedValueOnce({ data: { goals: FIVE_DESIGN_GOALS, insights: [] } });
+  renderGoalsPage();
+
+  await waitFor(() => screen.getByText("Weight target"));
+
+  const weightCard = screen.getByText("Weight target").closest("li");
+  expect(weightCard).not.toBeNull();
+  within(weightCard!).getByText("At Risk");
+  within(weightCard!).getByText("Behind pace for monthly target");
+});
+
+test("missed goal card shows Missed badge", async () => {
+  mockApiFetch.mockResolvedValueOnce({ data: { goals: FIVE_DESIGN_GOALS, insights: [] } });
+  renderGoalsPage();
+
+  await waitFor(() => screen.getByText("water_daily"));
+
+  const waterCard = screen.getByText("water_daily").closest("li");
+  expect(waterCard).not.toBeNull();
+  within(waterCard!).getByText("Missed");
+});
+
+// ── Completed goals section ───────────────────────────────────────────────────
+
+test("completed goals render in a separate section with muted style", async () => {
+  const completedGoal = {
+    ...FIVE_DESIGN_GOALS[0]!,
+    id: "goal-done",
+    status: "completed" as const,
+    section: "completed" as const,
+  };
+  mockApiFetch.mockResolvedValueOnce({
+    data: { goals: [completedGoal], insights: [] },
+  });
+
+  renderGoalsPage();
+
+  await waitFor(() => screen.getByText(/Completed & Archived/i));
+  screen.getByText("Walk steps daily");
+});
+
+// ── Goal Insights section ─────────────────────────────────────────────────────
+
+test("Goal Insights section heading is present", async () => {
+  renderGoalsPage();
+  await waitFor(() => {
+    screen.getByRole("heading", { name: "Goal Insights", level: 2 });
+  });
+});
+
+test("fallback insight cards render when API returns no insights", async () => {
+  mockApiFetch.mockResolvedValueOnce(EMPTY_GOALS_RESPONSE);
+  renderGoalsPage();
+
+  await waitFor(() => {
+    screen.getByText("Consistency Pays Off");
+    screen.getByText("Weight Loss Strategy");
+  });
+});
+
+test("API-supplied insight cards render with title and body", async () => {
+  mockApiFetch.mockResolvedValueOnce({
+    data: {
+      goals: [],
+      insights: [
+        {
+          id: "ins-1",
+          goalId: null,
+          title: "Consistency Pays Off",
+          body: "You've hit your step goal 5 days in a row. Maintaining this consistency will help you reach your monthly activity target ahead of schedule.",
+          insightType: "consistency",
+          createdAt: "2026-01-15T00:00:00.000Z",
+        },
+        {
+          id: "ins-2",
+          goalId: "goal-weight",
+          title: "Weight Loss Strategy",
+          body: "To get back on track with your weight goal, try increasing your weekly exercise by 30 minutes and tracking your calorie intake more closely.",
+          insightType: "strategy",
+          createdAt: "2026-01-15T00:00:00.000Z",
+        },
+      ],
+    },
+  });
+
+  renderGoalsPage();
+
+  await waitFor(() => {
+    screen.getByText("Consistency Pays Off");
+    screen.getByText("Weight Loss Strategy");
+  });
+});
+
+// ── Coming Soon banner ────────────────────────────────────────────────────────
+
+test("Coming Soon banner heading is present", async () => {
+  renderGoalsPage();
+  await waitFor(() => {
+    screen.getByRole("heading", {
+      name: "Explore structured programs to reach your goals",
+      level: 2,
+    });
+  });
+});
+
+test("Coming Soon banner shows 'Coming Soon' badge text", async () => {
+  renderGoalsPage();
+  await waitFor(() => {
+    screen.getByText("Coming Soon");
+  });
+});
+
+test("Coming Soon banner subtitle text is present", async () => {
+  renderGoalsPage();
+  await waitFor(() => {
+    screen.getByText(
+      "Join guided wellness programs designed by experts to help you achieve lasting results",
+    );
+  });
 });
