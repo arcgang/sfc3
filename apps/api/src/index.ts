@@ -7,6 +7,7 @@ import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
 import { devicesRouter } from "./api/devicesRoutes.js";
+import { alertsRouter } from "./api/alertsRoutes.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -25,6 +26,7 @@ app.get("/health", (_req, res) => {
 const requireAuth = authMiddleware(config.jwtSecret);
 
 app.use("/api/v1/devices", requireAuth, devicesRouter);
+app.use("/api/v1/alerts", requireAuth, alertsRouter);
 
 app.use(errorHandler);
 

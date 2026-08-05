@@ -1,0 +1,14 @@
+{
+  "staleAfterHours": {
+    "smartwatch": 18,
+    "smart_scale": 24
+  },
+  "abnormalReading": {
+    "resting_heart_rate_bpm": { "low": 40, "high": 100 },
+    "systolic_bp_mmhg": { "low": 90, "high": 140 },
+    "diastolic_bp_mmhg": { "low": 60, "high": 90 },
+    "blood_oxygen_pct": { "low": 95, "high": null },
+    "weight_kg": { "low": null, "high": null },
+    "body_fat_pct": { "low": null, "high": null }
+  }
+}
