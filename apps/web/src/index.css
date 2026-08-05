@@ -1,16 +1,29 @@
-/* ── Design tokens ─────────────────────────────────────────────── */
+/* ── Design tokens ── shared across all pages ──────────────────────────────── */
 :root {
-  --color-text-primary: #1a1a1a;       /* #1a1a1a on #fff → 18.1:1 */
-  --color-text-secondary: #4a4a4a;     /* #4a4a4a on #fff → 9.7:1  */
-  --color-text-on-teal: #ffffff;       /* #fff on #1a7a6e → 7.1:1  */
+  /* Colours */
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #4a4a4a;
+  --color-text-on-teal: #ffffff;
   --color-bg-white: #ffffff;
   --color-bg-light: #f5f7fa;
+  --color-bg-page: #f5f5f7;
   --color-bg-teal: #1a7a6e;
-  --color-accent: #0d6655;             /* links on white → 5.2:1   */
-  --color-border: #d1d5db;
-  --color-error: #b91c1c;              /* #b91c1c on #fff → 7.0:1  */
-  --color-warning: #92400e;            /* #92400e on #fff → 7.1:1  */
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-border: #e0e0e0;
+  --color-success: #16a34a;
+  --color-success-bg: #f0fdf4;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-sidebar-bg: #1a1a2e;
+  --color-sidebar-text: #e0e0e0;
+  --color-sidebar-link: #c8c8d8;
+  --color-sidebar-link-active: #ffffff;
+  --color-error: #b91c1c;
 
+  /* Spacing */
   --space-xs: 0.5rem;
   --space-sm: 1rem;
   --space-md: 1.5rem;
@@ -18,8 +31,14 @@
   --space-xl: 3rem;
   --space-2xl: 4rem;
 
+  /* Radii */
   --radius-card: 0.5rem;
+
+  /* Z-index scale */
   --z-header: 10;
+  --z-sidebar: 10;
+  --z-overlay: 90;
+  --z-modal: 100;
 }
 
 *,

@@ -1,6 +1,22 @@
 const TOKEN_KEY = "wh_token";
 const API_BASE_PATH = "/api/v1";
 
+function getToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function removeToken(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // storage unavailable — nothing to clear
+  }
+}
+
 function redirectToLogin(): void {
   window.location.href = "/login";
 }
@@ -10,7 +26,7 @@ export async function apiFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const baseUrl = import.meta.env["VITE_API_URL"] ?? "http://localhost:3000";
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = getToken();
   const headers = new Headers(options.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (options.body && !headers.has("Content-Type")) {
@@ -21,7 +37,7 @@ export async function apiFetch<T>(
     headers,
   });
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
+    removeToken();
     redirectToLogin();
     throw new Error("Unauthorized");
   }
@@ -33,9 +49,13 @@ export async function apiFetch<T>(
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // storage unavailable
+  }
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+  removeToken();
 }
