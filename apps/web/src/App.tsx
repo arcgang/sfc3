@@ -1,4 +1,4 @@
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { Footer } from "./components/Footer.js";
 import { ContactPage } from "./pages/ContactPage.js";
 import { HomePage } from "./pages/HomePage";
@@ -14,17 +14,25 @@ function Placeholder() {
   );
 }
 
-<<<<<<< HEAD
-function WithFooter({ children }: { children: import("react").ReactNode }) {
+function DevicesPairPlaceholder() {
   return (
-    <>
-      {children}
-      <Footer />
-=======
+    <main>
+      <h1>Connect Your Devices</h1>
+      <p>Device pairing coming soon.</p>
+    </main>
+  );
+}
+
+function DevicesPlaceholder() {
+  return (
+    <main>
+      <h1>Connected Devices</h1>
+      <p>Connected devices coming soon.</p>
+    </main>
+  );
+}
+
 export function App() {
-  const location = useLocation();
-  // HomePage renders its own footer; suppress the global one there to avoid duplicate links
-  const showGlobalFooter = location.pathname !== "/";
   return (
     <>
       <Routes>
@@ -32,21 +40,11 @@ export function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/partners-services" element={<PartnersServicesPage />} />
+        <Route path="/devices/pair" element={<DevicesPairPlaceholder />} />
+        <Route path="/devices" element={<DevicesPlaceholder />} />
         <Route path="*" element={<Placeholder />} />
       </Routes>
-      {showGlobalFooter && <Footer />}
->>>>>>> origin/main
+      <Footer />
     </>
-  );
-}
-
-export function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/privacy" element={<WithFooter><PrivacyPolicy /></WithFooter>} />
-      <Route path="/contact" element={<WithFooter><ContactPage /></WithFooter>} />
-      <Route path="*" element={<WithFooter><Placeholder /></WithFooter>} />
-    </Routes>
   );
 }
