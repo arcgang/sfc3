@@ -5,8 +5,6 @@ import { getDatabase } from "./connection.js";
 export function migrate(migrationsDir: string): void {
   const db = getDatabase();
 
-  db.pragma("foreign_keys = ON");
-
   db.exec(
     `CREATE TABLE IF NOT EXISTS _migrations (
        filename TEXT NOT NULL PRIMARY KEY,
