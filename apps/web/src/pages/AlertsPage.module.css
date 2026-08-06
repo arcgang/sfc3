@@ -186,10 +186,9 @@
   color: var(--color-warning);
 }
 
-/* No info token exists yet; blue literal is the only option */
 .severity-low {
-  background-color: #eff6ff;
-  color: #1e40af;
+  background-color: var(--color-info-bg);
+  color: var(--color-info-dark);
 }
 
 .alertCardBody {
