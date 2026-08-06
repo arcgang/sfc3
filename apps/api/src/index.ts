@@ -9,6 +9,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { migrate } from "./db/migrate.js";
 import { devicesRouter } from "./api/devicesRoutes.js";
 import { alertsRouter } from "./api/alertsRoutes.js";
+import { recommendationsRouter } from "./api/recommendationsRoutes.js";
 import { goalsRouter } from "./routes/goals.js";
 import { dashboardRouter } from "./api/dashboardRoutes.js";
 import { dashboardRefreshRouter } from "./routes/dashboard.js";
@@ -41,6 +42,7 @@ app.use("/api/v1/goals", requireAuth, goalsRouter);
 app.use("/api/v1/dashboard", requireAuth, dashboardRouter);
 app.use("/api/v1/dashboard/refresh", requireAuth, dashboardRefreshRouter);
 app.use("/api/v1/privacy", requireAuth, privacyRouter);
+app.use("/api/v1/recommendations", requireAuth, recommendationsRouter);
 
 app.use(errorHandler);
 
