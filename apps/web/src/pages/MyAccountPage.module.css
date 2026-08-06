@@ -418,6 +418,20 @@
   outline-offset: 2px;
 }
 
+/* Inline privacy policy block */
+.inlinePrivacyPolicy {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.inlinePolicyHeading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 0.75rem;
+}
+
 /* Security section */
 .securityRow {
   display: flex;

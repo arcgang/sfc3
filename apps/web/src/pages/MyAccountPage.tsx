@@ -89,11 +89,7 @@ export function MyAccountPage() {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void apiFetch<unknown>("/privacy/viewed", { signal: controller.signal }).catch(() => {
-      // best-effort — failure does not block the UI
-    });
-    return () => controller.abort();
+    console.log(JSON.stringify({ category: "privacy.viewed", timestamp: new Date().toISOString() }));
   }, []);
 
   function openEdit() {
@@ -366,9 +362,6 @@ export function MyAccountPage() {
               Your wellness data is encrypted, secure, and never sold to third parties. We are
               committed to protecting your privacy and giving you full control over your information.
             </p>
-            <p className={styles.privacyText}>
-              <Link to="/privacy" className={styles.securityLink}>View our Privacy Policy</Link>
-            </p>
 
             {exportMessage && (
               <p role="status" className={styles.successMessage}>{exportMessage}</p>
@@ -401,6 +394,26 @@ export function MyAccountPage() {
                 {deleteSubmitting ? "Submitting…" : "Delete My Account"}
               </button>
             </div>
+
+            <section aria-labelledby="privacy-policy-inline-heading" className={styles.inlinePrivacyPolicy}>
+              <h3 id="privacy-policy-inline-heading" className={styles.inlinePolicyHeading}>Privacy Policy</h3>
+              <p className={styles.privacyText}>
+                WellnessHub is committed to protecting your privacy. Your personal health information
+                is never sold to third parties — not to advertisers, data brokers, or any other organisation.
+              </p>
+              <p className={styles.privacyText}>
+                All data you share with WellnessHub is encrypted at rest and in transit using
+                industry-standard security practices, so your wellness information stays private
+                and secure at all times.
+              </p>
+              <p className={styles.privacyText}>
+                You own your health data. You may export a copy of all your information or request
+                its permanent deletion at any time using the buttons above.
+              </p>
+              <p className={styles.privacyText}>
+                <Link to="/privacy" className={styles.securityLink}>View full Privacy Policy</Link>
+              </p>
+            </section>
           </section>
 
           {/* Security section */}
