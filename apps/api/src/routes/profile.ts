@@ -5,10 +5,14 @@ import { getDatabase } from "../db/connection.js";
 import { validateBody } from "../middleware/validate.js";
 import type { ErrorResponse } from "../types/errors.js";
 
+const PERSONA_MODES = ['default', 'fitness', 'elder_friendly', 'chronic_care_aware'] as const;
+type PersonaMode = typeof PERSONA_MODES[number];
+
 const profileSchema = z.object({
   fullName: z.string().min(1).max(120),
   dateOfBirth: z.string().date().nullable().optional(),
   gender: z.string().max(64).nullable().optional(),
+  personaMode: z.enum(PERSONA_MODES).optional(),
   wellnessPreferences: z
     .array(z.string())
     .optional(),
@@ -47,6 +51,7 @@ profileRouter.put(
 
     const input = req.body as ProfileBody;
     const now = new Date().toISOString();
+    const personaMode: PersonaMode = input.personaMode ?? 'default';
 
     try {
       const db = getDatabase();
@@ -64,6 +69,7 @@ profileRouter.put(
               SET full_name = ?,
                   date_of_birth = ?,
                   gender = ?,
+                  persona_mode = ?,
                   wellness_preferences = ?,
                   updated_at = ?
             WHERE user_id = ?`,
@@ -71,6 +77,7 @@ profileRouter.put(
           input.fullName,
           input.dateOfBirth ?? null,
           input.gender ?? null,
+          personaMode,
           JSON.stringify(wellnessPrefs),
           now,
           userId,
@@ -83,10 +90,11 @@ profileRouter.put(
               privacy_policy_accepted, data_export_requested, data_deletion_requested,
               created_at, updated_at)
            VALUES
-             (?, ?, 'default', ?, ?, ?, ?, '[]', NULL, 0, 0, 0, ?, ?)`,
+             (?, ?, ?, ?, ?, ?, ?, '[]', NULL, 0, 0, 0, ?, ?)`,
         ).run(
           profileId,
           userId,
+          personaMode,
           input.fullName,
           input.dateOfBirth ?? null,
           input.gender ?? null,
