@@ -18,6 +18,13 @@ export function authMiddleware(
     try {
       const decoded = jwt.verify(token, jwtSecret);
       res.locals["user"] = decoded;
+      if (
+        typeof decoded === "object" &&
+        decoded !== null &&
+        typeof (decoded as Record<string, unknown>)["sub"] === "string"
+      ) {
+        req.userId = (decoded as { sub: string }).sub;
+      }
       next();
     } catch (err) {
       const reason =

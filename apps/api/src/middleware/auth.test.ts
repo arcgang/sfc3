@@ -15,9 +15,13 @@ function buildApp() {
   app.use(express.json());
   app.use(correlationIdMiddleware);
 
+  app.get("/health", (_req: Request, res: Response) => {
+    res.json({ status: "ok" });
+  });
+
   const requireAuth = authMiddleware(TEST_SECRET);
-  app.get("/api/v1/auth/me", requireAuth, (_req: Request, res: Response) => {
-    res.json({ user: res.locals["user"] });
+  app.get("/api/v1/auth/me", requireAuth, (req: Request, res: Response) => {
+    res.json({ user: res.locals["user"], userId: req.userId });
   });
 
   app.use(errorHandler);
@@ -267,5 +271,35 @@ describe("authMiddleware — valid token → request passes through", () => {
     const body = res.body as { user: { sub: string; email: string } };
     expect(body.user.sub).toBe(VALID_PAYLOAD.sub);
     expect(body.user.email).toBe(VALID_PAYLOAD.email);
+  });
+
+  it("attaches req.userId equal to the token subject", async () => {
+    const app = buildApp();
+    const token = jwt.sign(VALID_PAYLOAD, TEST_SECRET, { expiresIn: "1h" });
+    const res = await supertest(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${token}`);
+    const body = res.body as { userId: string };
+    expect(body.userId).toBe(VALID_PAYLOAD.sub);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Public routes registered before authMiddleware are exempt from auth
+// ---------------------------------------------------------------------------
+
+describe("authMiddleware — GET /health is exempt from token verification", () => {
+  it("returns HTTP 200 from /health without any Authorization header", async () => {
+    const app = buildApp();
+    const res = await supertest(app).get("/health");
+    expect(res.status).toBe(200);
+  });
+
+  it("returns HTTP 200 from /health even when Authorization header is present but invalid", async () => {
+    const app = buildApp();
+    const res = await supertest(app)
+      .get("/health")
+      .set("Authorization", "Bearer not-a-valid-jwt");
+    expect(res.status).toBe(200);
   });
 });

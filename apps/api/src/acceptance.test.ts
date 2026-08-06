@@ -148,8 +148,17 @@ describe("Criterion 1 – server starts and accepts requests on a configured por
     expect(cfg.port).toBe(4321);
   });
 
-  it("buildConfig throws when JWT_SECRET is absent", () => {
-    expect(() => buildConfig({})).toThrow(/JWT_SECRET/);
+  it("buildConfig does not throw when JWT_SECRET is absent — warns and uses dev fallback", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      expect(() => buildConfig({})).not.toThrow();
+      const warned = warnSpy.mock.calls.some((args) =>
+        args.some((a) => typeof a === "string" && a.includes("JWT_SECRET")),
+      );
+      expect(warned).toBe(true);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
 

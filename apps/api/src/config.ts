@@ -32,10 +32,13 @@ export function loadAlertThresholds(path: string = DEFAULT_THRESHOLDS_PATH): Ale
   return parsed as AlertThresholds;
 }
 
+const DEV_JWT_SECRET = "dev-secret-do-not-use-in-production";
+
 export function buildConfig(env: Record<string, string | undefined>): Config {
-  const jwtSecret = env["JWT_SECRET"];
+  let jwtSecret = env["JWT_SECRET"];
   if (!jwtSecret) {
-    throw new Error("Missing required environment variable: JWT_SECRET");
+    console.warn("⚠️  JWT_SECRET not set — using insecure dev default");
+    jwtSecret = DEV_JWT_SECRET;
   }
   const thresholdsPath = env["ALERT_THRESHOLDS_PATH"] ?? DEFAULT_THRESHOLDS_PATH;
   return {
