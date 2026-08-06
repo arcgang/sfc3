@@ -125,13 +125,9 @@ export function LoginPage() {
               </span>
             )}
             <div className={styles.forgotRow}>
-              <a
-                href="#forgot-password-noop"
-                className={styles.forgotLink}
-                onClick={(e) => e.preventDefault()}
-              >
+              <Link to="/forgot-password" className={styles.forgotLink}>
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </div>
 
