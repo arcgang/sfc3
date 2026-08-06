@@ -9,6 +9,7 @@ export interface DeviceStatus {
   deviceType: DeviceType;
   connectionStatus: string;
   lastSuccessfulSyncAt: string | null;
+  staleAfterHours: number;
   stale: boolean;
 }
 
@@ -81,6 +82,7 @@ interface DeviceRow {
   device_type: string;
   connection_status: string;
   last_successful_sync_at: string | null;
+  stale_after_hours: number;
 }
 
 interface MetricRow {
@@ -99,23 +101,27 @@ export class DashboardDao {
   getForUser(userId: string): DashboardData {
     const deviceRows = this.db
       .prepare(
-        `SELECT device_type, connection_status, last_successful_sync_at
+        `SELECT device_type, connection_status, last_successful_sync_at, stale_after_hours
            FROM device_connections
           WHERE user_id = ?
           ORDER BY device_type ASC`,
       )
       .all(userId) as DeviceRow[];
 
-    const staleThreshold = new Date(Date.now() - STALE_HOURS * 60 * 60 * 1000).toISOString();
-
-    const devices: DeviceStatus[] = deviceRows.map((row) => ({
-      deviceType: row.device_type as DeviceType,
-      connectionStatus: row.connection_status,
-      lastSuccessfulSyncAt: row.last_successful_sync_at,
-      stale:
-        row.last_successful_sync_at === null ||
-        row.last_successful_sync_at < staleThreshold,
-    }));
+    const now = Date.now();
+    const devices: DeviceStatus[] = deviceRows.map((row) => {
+      const staleAfterHours = row.stale_after_hours;
+      const threshold = new Date(now - staleAfterHours * 60 * 60 * 1000).toISOString();
+      return {
+        deviceType: row.device_type as DeviceType,
+        connectionStatus: row.connection_status,
+        lastSuccessfulSyncAt: row.last_successful_sync_at,
+        staleAfterHours,
+        stale:
+          row.last_successful_sync_at === null ||
+          row.last_successful_sync_at < threshold,
+      };
+    });
 
     const smartwatch = this.getLatestSmartwatchMetrics(userId);
     const smartScale = this.getLatestSmartScaleMetrics(userId);

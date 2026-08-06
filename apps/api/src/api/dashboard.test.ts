@@ -359,7 +359,7 @@ describe("GET /api/v1/dashboard — stale flag", () => {
     expect(body.data.devices[0]?.stale).toBe(true);
   });
 
-  it("marks device as stale when last_successful_sync_at is more than 12 hours ago", async () => {
+  it("marks device as stale when last_successful_sync_at is more than 18 hours ago", async () => {
     const app = await buildApp();
     const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "dash-stale-2";
@@ -379,7 +379,7 @@ describe("GET /api/v1/dashboard — stale flag", () => {
     expect(body.data.devices[0]?.stale).toBe(true);
   });
 
-  it("marks device as not stale when last_successful_sync_at is within 12 hours", async () => {
+  it("marks device as not stale when last_successful_sync_at is within 18 hours", async () => {
     const app = await buildApp();
     const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "dash-stale-3";
@@ -398,6 +398,139 @@ describe("GET /api/v1/dashboard — stale flag", () => {
     const body = res.body as { data: { devices: Array<{ stale: boolean; lastSuccessfulSyncAt: string }> } };
     expect(body.data.devices[0]?.stale).toBe(false);
     expect(body.data.devices[0]?.lastSuccessfulSyncAt).toBe(RECENT_SYNC_AT);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// lastSyncStatus contract fields
+// ---------------------------------------------------------------------------
+
+describe("GET /api/v1/dashboard — lastSyncStatus LLD contract fields", () => {
+  it("lastSyncStatus includes isStale, staleThresholdHours, overallLastSyncAt, and deviceStatuses", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-lss-shape-1";
+    const connId = "conn-lss-shape-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: {
+        lastSyncStatus: {
+          isStale: boolean;
+          staleThresholdHours: number;
+          overallLastSyncAt: string | null;
+          deviceStatuses: Array<{ deviceType: string; status: string; lastSyncAt: string | null; stale: boolean }>;
+        };
+      };
+    };
+    expect(typeof body.data.lastSyncStatus.isStale).toBe("boolean");
+    expect(typeof body.data.lastSyncStatus.staleThresholdHours).toBe("number");
+    expect(body.data.lastSyncStatus.staleThresholdHours).toBe(18);
+    expect(body.data.lastSyncStatus.overallLastSyncAt).toBe(RECENT_SYNC_AT);
+    expect(Array.isArray(body.data.lastSyncStatus.deviceStatuses)).toBe(true);
+  });
+
+  it("lastSyncStatus.isStale is false when all devices synced recently", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-lss-fresh-1";
+    const connId = "conn-lss-fresh-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: { lastSyncStatus: { isStale: boolean } } };
+    expect(body.data.lastSyncStatus.isStale).toBe(false);
+  });
+
+  it("lastSyncStatus.isStale is true when any device has stale data", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-lss-stale-1";
+    const connId = "conn-lss-stale-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, STALE_SYNC_AT);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: { lastSyncStatus: { isStale: boolean } } };
+    expect(body.data.lastSyncStatus.isStale).toBe(true);
+  });
+
+  it("per-device entry in deviceStatuses has status field (not connectionStatus)", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-lss-field-1";
+    const connId = "conn-lss-field-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: {
+        lastSyncStatus: {
+          deviceStatuses: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    const entry = body.data.lastSyncStatus.deviceStatuses[0];
+    expect(entry).toBeDefined();
+    expect("status" in (entry ?? {})).toBe(true);
+    expect("connectionStatus" in (entry ?? {})).toBe(false);
+    expect(entry?.["status"]).toBe("connected");
+  });
+
+  it("overallLastSyncAt reflects the most recent device sync when multiple devices present", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-lss-multi-1";
+    const swConnId = "conn-lss-sw-1";
+    const ssConnId = "conn-lss-ss-1";
+    const olderSync = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); // 2h ago
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", swConnId, RECENT_SYNC_AT);
+    seedDevice(db, userId, "smart_scale", ssConnId, olderSync);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: { lastSyncStatus: { overallLastSyncAt: string } } };
+    // RECENT_SYNC_AT is 1h ago, olderSync is 2h ago — most recent wins
+    expect(body.data.lastSyncStatus.overallLastSyncAt).toBe(RECENT_SYNC_AT);
   });
 });
 

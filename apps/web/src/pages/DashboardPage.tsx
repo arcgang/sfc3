@@ -18,13 +18,15 @@ interface SummaryCard {
 
 interface DeviceSyncStatus {
   deviceType: string;
-  connectionStatus: string;
+  status: string;
   lastSyncAt: string | null;
   stale: boolean;
 }
 
 interface LastSyncStatus {
   overallLastSyncAt: string | null;
+  isStale: boolean;
+  staleThresholdHours: number;
   stalenessLabel: string;
   deviceStatuses: DeviceSyncStatus[];
 }
