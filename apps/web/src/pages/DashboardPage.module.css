@@ -22,13 +22,38 @@
 
 .syncStatus {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.greetingSkeleton {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  opacity: 0.5;
+}
+
+.dashError {
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.metricEmpty {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+  font-style: italic;
 }
 
 .refreshLink {
+  background: none;
+  border: none;
+  padding: 0;
   color: var(--color-accent);
-  text-decoration: none;
+  cursor: pointer;
+  font-size: inherit;
   margin-left: 0.5rem;
+  text-decoration: none;
 }
 
 .refreshLink:hover {

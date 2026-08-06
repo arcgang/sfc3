@@ -1,17 +1,82 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import styles from "./DashboardPage.module.css";
+
+// ── Types mirroring the API response ─────────────────────────────────────────
+
+type CardId = "HeartRate" | "Steps" | "BloodPressure" | "Sleep";
+
+interface SummaryCard {
+  id: CardId;
+  label: string;
+  value: number | string | null;
+  unit: string;
+  badge: string;
+  emptyState: boolean;
+}
+
+interface DeviceSyncStatus {
+  deviceType: string;
+  connectionStatus: string;
+  lastSyncAt: string | null;
+  stale: boolean;
+}
+
+interface LastSyncStatus {
+  overallLastSyncAt: string | null;
+  stalenessLabel: string;
+  deviceStatuses: DeviceSyncStatus[];
+}
 
 interface GoalSummary {
   id: string;
   status: string;
 }
 
+interface DashboardPayload {
+  greeting: string;
+  personaMode: string;
+  summaryCards: SummaryCard[];
+  lastSyncStatus: LastSyncStatus;
+}
+
 interface GoalCounts {
   onTrack: number;
   atRisk: number;
   missed: number;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const CARD_ICON: Record<CardId, string> = {
+  HeartRate: "❤️",
+  Steps: "🚶",
+  BloodPressure: "🩺",
+  Sleep: "😴",
+};
+
+function formatValue(card: SummaryCard): string {
+  if (card.value === null) return "";
+  if (card.id === "Sleep" && typeof card.value === "number") {
+    const h = (card.value / 60).toFixed(1);
+    return `${h}h`;
+  }
+  if (typeof card.value === "number" && card.id === "Steps") {
+    return card.value.toLocaleString();
+  }
+  return String(card.value);
+}
+
+function relativeTime(isoString: string | null): string {
+  if (!isoString) return "unknown";
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMin = Math.round(diffMs / 60_000);
+  if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? "s" : ""} ago`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `${diffH} hour${diffH !== 1 ? "s" : ""} ago`;
+  const diffD = Math.round(diffH / 24);
+  return `${diffD} day${diffD !== 1 ? "s" : ""} ago`;
 }
 
 function computeCounts(goals: GoalSummary[]): GoalCounts {
@@ -22,10 +87,72 @@ function computeCounts(goals: GoalSummary[]): GoalCounts {
   };
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface MetricCardProps {
+  card: SummaryCard;
+}
+
+function MetricCard({ card }: MetricCardProps) {
+  const icon = CARD_ICON[card.id];
+  const label = `${card.label} ${icon}`;
+
+  if (card.emptyState) {
+    return (
+      <li className={styles.metricCard} data-card-id={card.id}>
+        <span className={styles.metricLabel}>{label}</span>
+        <span className={styles.metricEmpty}>
+          No device connected — set up a device to see this metric
+        </span>
+      </li>
+    );
+  }
+
+  return (
+    <li className={styles.metricCard} data-card-id={card.id}>
+      <span className={styles.metricLabel}>{label}</span>
+      <strong className={styles.metricValue}>
+        {formatValue(card)}
+        {card.unit === "mmHg" || card.id === "BloodPressure" ? "" : ""}
+      </strong>
+      {card.badge && <span className={styles.metricStatus}>{card.badge}</span>}
+    </li>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export function DashboardPage() {
+  const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
+  const [dashLoading, setDashLoading] = useState(true);
+  const [dashError, setDashError] = useState<string | null>(null);
+
   const [counts, setCounts] = useState<GoalCounts>({ onTrack: 0, atRisk: 0, missed: 0 });
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [goalsError, setGoalsError] = useState<string | null>(null);
+
+  const fetchDashboard = useCallback((signal?: AbortSignal) => {
+    setDashLoading(true);
+    setDashError(null);
+    apiFetch<{ data: DashboardPayload }>("/dashboard", signal ? { signal } : {})
+      .then((res) => {
+        setDashboard(res.data);
+        setDashLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setDashError("Failed to load dashboard data.");
+        setDashLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchDashboard(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, [fetchDashboard]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,42 +173,65 @@ export function DashboardPage() {
     };
   }, []);
 
+  const lastSyncLabel =
+    dashboard?.lastSyncStatus.overallLastSyncAt
+      ? `✓ Last synced: ${relativeTime(dashboard.lastSyncStatus.overallLastSyncAt)}`
+      : dashboard?.lastSyncStatus.stalenessLabel ?? "✓ Last synced: —";
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
-        <h1>Good morning, Michael!</h1>
+        {dashLoading ? (
+          <h1 className={styles.greetingSkeleton} aria-busy="true">
+            Loading…
+          </h1>
+        ) : dashError ? (
+          <>
+            <h1>Dashboard</h1>
+            <p role="alert" className={styles.dashError}>
+              {dashError}{" "}
+              <button
+                type="button"
+                className={styles.retryButton}
+                onClick={() => fetchDashboard()}
+              >
+                Retry
+              </button>
+            </p>
+          </>
+        ) : (
+          <h1>{dashboard!.greeting}</h1>
+        )}
         <span className={styles.syncStatus}>
-          ✓ Last synced: 2 hours ago{" "}
-          <a href="#refresh-noop" onClick={(e) => e.preventDefault()} className={styles.refreshLink}>
+          {lastSyncLabel}{" "}
+          <button
+            type="button"
+            className={styles.refreshLink}
+            onClick={() => fetchDashboard()}
+            aria-label="Refresh dashboard"
+          >
             ↻ Refresh
-          </a>
+          </button>
         </span>
       </div>
 
       <section aria-labelledby="metrics-heading" className={styles.metricsSection}>
         <h2 id="metrics-heading" className="sr-only">Health Metrics</h2>
-        <ul className={styles.metricCards}>
-          <li className={styles.metricCard}>
-            <span className={styles.metricLabel}>Heart Rate ❤️</span>
-            <strong className={styles.metricValue}>103 BPM</strong>
-            <span className={styles.metricStatus}>⚠️ Monitor</span>
-          </li>
-          <li className={styles.metricCard}>
-            <span className={styles.metricLabel}>Steps 🚶</span>
-            <strong className={styles.metricValue}>2,097</strong>
-            <span className={styles.metricStatus}>↑ 21% of goal</span>
-          </li>
-          <li className={styles.metricCard}>
-            <span className={styles.metricLabel}>Blood Pressure 🩺</span>
-            <strong className={styles.metricValue}>109/85</strong>
-            <span className={styles.metricStatus}>⚠️ Elevated</span>
-          </li>
-          <li className={styles.metricCard}>
-            <span className={styles.metricLabel}>Sleep 😴</span>
-            <strong className={styles.metricValue}>9.5h</strong>
-            <span className={styles.metricStatus}>→ Fair</span>
-          </li>
-        </ul>
+        {dashLoading ? (
+          <ul className={styles.metricCards} aria-label="Health metrics">
+            {(["HeartRate", "Steps", "BloodPressure", "Sleep"] as CardId[]).map((id) => (
+              <li key={id} className={styles.metricCard} aria-busy="true">
+                <span className={styles.metricLabel}>Loading…</span>
+              </li>
+            ))}
+          </ul>
+        ) : dashError ? null : (
+          <ul className={styles.metricCards} aria-label="Health metrics">
+            {dashboard!.summaryCards.map((card) => (
+              <MetricCard key={card.id} card={card} />
+            ))}
+          </ul>
+        )}
       </section>
 
       <section aria-labelledby="insights-heading" className={styles.infoGrid}>
