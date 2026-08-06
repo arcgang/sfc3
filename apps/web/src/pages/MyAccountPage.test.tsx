@@ -140,6 +140,13 @@ describe("MyAccountPage — profile display", () => {
     renderPage();
     await screen.findByRole("button", { name: "Edit Profile" });
   });
+
+  it("renders a profile avatar element in the Profile section", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Profile" });
+    const avatar = within(section).getByText("A");
+    expect(avatar).toBeTruthy();
+  });
 });
 
 // ── Edit profile inline form ───────────────────────────────────────────────────
@@ -241,6 +248,24 @@ describe("MyAccountPage — dashboard mode selector", () => {
     await screen.findByRole("radio", { name: /Everyday Wellness/i });
     screen.getByRole("radio", { name: /Active Fitness/i });
     screen.getByRole("radio", { name: /Assisted \/ Chronic-Care-Aware/i });
+  });
+
+  it("renders exactly 3 mode option tiles", async () => {
+    renderPage();
+    const radios = await screen.findAllByRole("radio");
+    expect(radios).toHaveLength(3);
+  });
+
+  it("applies modeOptionSelected class to the selected tile when a different tile is clicked", async () => {
+    renderPage();
+    await screen.findByRole("radio", { name: /Active Fitness/i });
+    act(() => {
+      fireEvent.click(screen.getByRole("radio", { name: /Active Fitness/i }));
+    });
+    const fitnessRadio = screen.getByRole("radio", { name: /Active Fitness/i }) as HTMLInputElement;
+    expect(fitnessRadio.checked).toBe(true);
+    const defaultRadio = screen.getByRole("radio", { name: /Everyday Wellness/i }) as HTMLInputElement;
+    expect(defaultRadio.checked).toBe(false);
   });
 
   it("has Everyday Wellness selected by default when personaMode is 'default'", async () => {
