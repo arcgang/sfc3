@@ -282,3 +282,49 @@ test("dashboard mode section renders all three options", () => {
   screen.getByText("Active Fitness");
   screen.getByText("Assisted / Chronic-Care-Aware");
 });
+
+test("Everyday Wellness option shows exact description from design", () => {
+  renderPage();
+  screen.getByText(
+    "Balanced view across all health domains. Best for general wellness tracking.",
+  );
+});
+
+test("Active Fitness option shows exact description from design", () => {
+  renderPage();
+  screen.getByText(
+    "Emphasizes activity, workouts, and body composition. Ideal for fitness enthusiasts.",
+  );
+});
+
+test("Assisted / Chronic-Care-Aware option shows exact description from design", () => {
+  renderPage();
+  screen.getByText(
+    "Larger emphasis on critical indicators and simplified readability.",
+  );
+});
+
+test("Dashboard Mode label is marked required with an asterisk", () => {
+  renderPage();
+  screen.getByText("Dashboard Mode *");
+});
+
+test("submitting without selecting a dashboard mode sends personaMode: default", async () => {
+  const calls: { path: string; opts: RequestInit }[] = [];
+  mockApiFetch.implementation = (path, opts) => {
+    calls.push({ path, opts });
+    return Promise.resolve({});
+  };
+  renderPage();
+
+  fireEvent.change(screen.getByLabelText("Full Name *"), {
+    target: { value: "Alice Smith" },
+  });
+  fireEvent.submit(
+    screen.getByRole("button", { name: "Next: Connect Devices" }).closest("form")!,
+  );
+
+  await waitFor(() => expect(calls).toHaveLength(1));
+  const body = JSON.parse(calls[0]!.opts.body as string) as Record<string, unknown>;
+  expect(body["personaMode"]).toBe("default");
+});
