@@ -497,7 +497,9 @@ test("Dismiss button removes the card from view immediately", async () => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
-    if (typeof path === "string" && path.includes("/status")) return Promise.resolve({ data: {} });
+    if (typeof path === "string" && path.endsWith("/dismiss")) {
+      return Promise.resolve({ data: { dismissed: THREE_RECS[0], next_nudge: null } });
+    }
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderAlertsPage();
@@ -509,6 +511,114 @@ test("Dismiss button removes the card from view immediately", async () => {
   fireEvent.click(within(section).getAllByRole("button", { name: "Dismiss" })[0]!);
   await waitFor(() => {
     expect(within(section).getAllByRole("button", { name: "Dismiss" }).length).toBe(2);
+  });
+});
+
+test("Mark as Done button removes the card and adds next_nudge when returned", async () => {
+  const FOURTH_REC = {
+    id: "rec-4",
+    insight_type: "nudge",
+    content: "Fourth nudge content that was previously hidden.",
+    status: "active",
+    user_id: "u1",
+    goal_id: null,
+    generator_name: null,
+    user_data_only: 1,
+    created_at: "2026-08-06T00:00:00.000Z",
+    updated_at: "2026-08-06T00:00:00.000Z",
+  };
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.endsWith("/mark-done")) {
+      return Promise.resolve({ data: { dismissed: THREE_RECS[0], next_nudge: FOURTH_REC } });
+    }
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  expect(within(section).getAllByRole("button", { name: "Mark as Done" }).length).toBe(3);
+
+  fireEvent.click(within(section).getAllByRole("button", { name: "Mark as Done" })[0]!);
+  await waitFor(() => {
+    expect(within(section).getByText("Fourth nudge content that was previously hidden.")).toBeTruthy();
+  });
+  expect(within(section).getAllByRole("button", { name: "Mark as Done" }).length).toBe(3);
+});
+
+test("Dismiss button calls POST /recommendations/nudges/:id/dismiss", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.endsWith("/dismiss")) {
+      return Promise.resolve({ data: { dismissed: THREE_RECS[0], next_nudge: null } });
+    }
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+
+  fireEvent.click(within(section).getAllByRole("button", { name: "Dismiss" })[0]!);
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      `/recommendations/nudges/${THREE_RECS[0]!.id}/dismiss`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+});
+
+test("Mark as Done button calls POST /recommendations/nudges/:id/mark-done", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.endsWith("/mark-done")) {
+      return Promise.resolve({ data: { dismissed: THREE_RECS[0], next_nudge: null } });
+    }
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+
+  fireEvent.click(within(section).getAllByRole("button", { name: "Mark as Done" })[0]!);
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      `/recommendations/nudges/${THREE_RECS[0]!.id}/mark-done`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+});
+
+test("displayed nudge cards never exceed three at one time", async () => {
+  const FOURTH_REC = {
+    id: "rec-4",
+    insight_type: "nudge",
+    content: "Fourth nudge content.",
+    status: "active",
+    user_id: "u1",
+    goal_id: null,
+    generator_name: null,
+    user_data_only: 1,
+    created_at: "2026-08-06T00:00:00.000Z",
+    updated_at: "2026-08-06T00:00:00.000Z",
+  };
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.endsWith("/mark-done")) {
+      return Promise.resolve({ data: { dismissed: THREE_RECS[0], next_nudge: FOURTH_REC } });
+    }
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+
+  fireEvent.click(within(section).getAllByRole("button", { name: "Mark as Done" })[0]!);
+  await waitFor(() => {
+    expect(within(section).getAllByRole("button", { name: "Mark as Done" }).length).toBeLessThanOrEqual(3);
   });
 });
 
