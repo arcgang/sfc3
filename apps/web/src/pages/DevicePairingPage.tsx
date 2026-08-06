@@ -60,16 +60,25 @@ export function DevicePairingPage() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
+        <div className={styles.logo} aria-hidden="true">
+          <div className={styles.logoIcon}>W</div>
+          <span className={styles.logoText}>WellnessHub</span>
+        </div>
+
         <h1 className={styles.heading}>Connect Your Devices</h1>
         <p className={styles.subheading}>
           Connect your smartwatch and smart scale to start tracking your wellness data
         </p>
 
+        <div className={styles.progressBar} role="presentation">
+          <div className={styles.progressFill} />
+        </div>
+
         <section aria-labelledby="device-types-heading" className={styles.deviceTypesSection}>
           <h2 id="device-types-heading" className="sr-only">Device Types</h2>
           <ul className={styles.deviceTypeList}>
             <li className={styles.deviceTypeCard}>
-              <span aria-hidden="true" className={styles.deviceEmoji}>⌚</span>
+              <span aria-hidden="true" className={styles.deviceIconCircle}>⌚</span>
               <h3 className={styles.deviceTypeName}>Smartwatch</h3>
               <p className={styles.deviceTypeDesc}>
                 Track activity, heart rate, sleep, and more from your wearable device
@@ -79,7 +88,7 @@ export function DevicePairingPage() {
               </button>
             </li>
             <li className={styles.deviceTypeCard}>
-              <span aria-hidden="true" className={styles.deviceEmoji}>⚖️</span>
+              <span aria-hidden="true" className={styles.deviceIconCircle}>⚖️</span>
               <h3 className={styles.deviceTypeName}>Smart Scale</h3>
               <p className={styles.deviceTypeDesc}>
                 Monitor weight, body fat, muscle mass, and body composition metrics
@@ -98,8 +107,10 @@ export function DevicePairingPage() {
           <ul className={styles.providerList}>
             {PROVIDERS.map((provider) => (
               <li key={provider.id} className={styles.providerCard}>
-                <span aria-hidden="true" className={styles.providerEmoji}>{provider.emoji}</span>
-                <h3 className={styles.providerLabel}>{provider.label}</h3>
+                <div className={styles.providerInfo}>
+                  <span aria-hidden="true" className={styles.providerLogo}>{provider.emoji}</span>
+                  <h3 className={styles.providerLabel}>{provider.label}</h3>
+                </div>
                 <button
                   type="button"
                   className={styles.connectBtn}
