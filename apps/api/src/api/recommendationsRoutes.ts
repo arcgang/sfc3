@@ -54,6 +54,138 @@ recommendationsRouter.get("/", (req: Request, res: Response): void => {
   });
 });
 
+// GET /api/v1/recommendations/nudges
+recommendationsRouter.get("/nudges", (req: Request, res: Response): void => {
+  const correlationId = getCorrelationId(res);
+  const userId = getUserId(res);
+
+  if (!userId) {
+    const body: ErrorResponse = {
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      error: {
+        type: "AUTH_TOKEN_INVALID",
+        details: [{ code: "AUTH_TOKEN_INVALID", message: "Invalid token payload." }],
+      },
+    };
+    res.status(401).json(body);
+    return;
+  }
+
+  const svc = new RecommendationService(getDatabase());
+  const nudges = svc.getNudges(userId);
+
+  res.status(200).json({
+    meta: { correlationId, timestamp: new Date().toISOString() },
+    data: nudges,
+  });
+});
+
+// POST /api/v1/recommendations/nudges/:id/dismiss
+recommendationsRouter.post("/nudges/:id/dismiss", (req: Request, res: Response): void => {
+  const correlationId = getCorrelationId(res);
+  const userId = getUserId(res);
+
+  if (!userId) {
+    const body: ErrorResponse = {
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      error: {
+        type: "AUTH_TOKEN_INVALID",
+        details: [{ code: "AUTH_TOKEN_INVALID", message: "Invalid token payload." }],
+      },
+    };
+    res.status(401).json(body);
+    return;
+  }
+
+  const id = req.params["id"] as string;
+  const svc = new RecommendationService(getDatabase());
+
+  try {
+    const updated = svc.dismissNudge(id, userId);
+    res.status(200).json({
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      data: updated,
+    });
+  } catch (err: unknown) {
+    const isNotFound =
+      err instanceof Error && (err as NodeJS.ErrnoException).code === "NOT_FOUND";
+    if (isNotFound) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: {
+          type: "NOT_FOUND",
+          details: [{ code: "NOT_FOUND", message: "Nudge not found." }],
+        },
+      };
+      res.status(404).json(body);
+      return;
+    }
+    const message = err instanceof Error ? err.message : "Unexpected error.";
+    console.error({ event: "nudges.dismiss_error", id, correlationId, message });
+    const body: ErrorResponse = {
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      error: {
+        type: "INTERNAL_ERROR",
+        details: [{ code: "INTERNAL_ERROR", message }],
+      },
+    };
+    res.status(500).json(body);
+  }
+});
+
+// POST /api/v1/recommendations/nudges/:id/mark-done
+recommendationsRouter.post("/nudges/:id/mark-done", (req: Request, res: Response): void => {
+  const correlationId = getCorrelationId(res);
+  const userId = getUserId(res);
+
+  if (!userId) {
+    const body: ErrorResponse = {
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      error: {
+        type: "AUTH_TOKEN_INVALID",
+        details: [{ code: "AUTH_TOKEN_INVALID", message: "Invalid token payload." }],
+      },
+    };
+    res.status(401).json(body);
+    return;
+  }
+
+  const id = req.params["id"] as string;
+  const svc = new RecommendationService(getDatabase());
+
+  try {
+    const updated = svc.markNudgeDone(id, userId);
+    res.status(200).json({
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      data: updated,
+    });
+  } catch (err: unknown) {
+    const isNotFound =
+      err instanceof Error && (err as NodeJS.ErrnoException).code === "NOT_FOUND";
+    if (isNotFound) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: {
+          type: "NOT_FOUND",
+          details: [{ code: "NOT_FOUND", message: "Nudge not found." }],
+        },
+      };
+      res.status(404).json(body);
+      return;
+    }
+    const message = err instanceof Error ? err.message : "Unexpected error.";
+    console.error({ event: "nudges.markDone_error", id, correlationId, message });
+    const body: ErrorResponse = {
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      error: {
+        type: "INTERNAL_ERROR",
+        details: [{ code: "INTERNAL_ERROR", message }],
+      },
+    };
+    res.status(500).json(body);
+  }
+});
+
 // PATCH /api/v1/recommendations/:id/status
 recommendationsRouter.patch("/:id/status", (req: Request, res: Response): void => {
   const correlationId = getCorrelationId(res);
