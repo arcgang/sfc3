@@ -164,72 +164,74 @@ function DeviceCard({ device, onSyncSuccess, onReconnectSuccess, onDisconnectSuc
 
   return (
     <li className={styles.card}>
-      <div className={styles.cardHeader}>
-        <span aria-hidden="true" className={styles.deviceIcon}>
-          {deviceIcon(device.deviceType)}
-        </span>
-        <div className={styles.cardTitleGroup}>
-          <h2 className={styles.deviceName}>{device.deviceName || device.provider}</h2>
-          <span className={styles.typeBadge}>{deviceTypeLabel(device.deviceType)}</span>
-        </div>
-        <span className={statusClass}>
-          {statusBadge(device.status, device.isStale)}
-        </span>
+      <div aria-hidden="true" className={styles.deviceIcon}>
+        {deviceIcon(device.deviceType)}
       </div>
-
-      <dl className={styles.metaList}>
-        <div className={styles.metaRow}>
-          <dt>Last Sync</dt>
-          <dd>{device.lastSyncAt ? formatDateTime(device.lastSyncAt) : "Unknown"}</dd>
+      <div className={styles.deviceInfo}>
+        <div className={styles.cardHeader}>
+          <div className={styles.cardTitleGroup}>
+            <h2 className={styles.deviceName}>{device.deviceName || device.provider}</h2>
+            <span className={styles.typeBadge}>{deviceTypeLabel(device.deviceType)}</span>
+          </div>
+          <span className={statusClass}>
+            {statusBadge(device.status, device.isStale)}
+          </span>
         </div>
-        <div className={styles.metaRow}>
-          <dt>Battery</dt>
-          <dd>{device.batteryLevel ?? "Unknown"}</dd>
-        </div>
-        <div className={styles.metaRow}>
-          <dt>Connected Since</dt>
-          <dd>{formatDate(device.connectedSince)}</dd>
-        </div>
-      </dl>
 
-      {actionError && (
-        <p role="alert" className={styles.syncError}>
-          {actionError}
-        </p>
-      )}
+        <dl className={styles.metaList}>
+          <div className={styles.metaRow}>
+            <dt>Last Sync</dt>
+            <dd>{device.lastSyncAt ? formatDateTime(device.lastSyncAt) : "Unknown"}</dd>
+          </div>
+          <div className={styles.metaRow}>
+            <dt>Battery</dt>
+            <dd>{device.batteryLevel ?? "Unknown"}</dd>
+          </div>
+          <div className={styles.metaRow}>
+            <dt>Connected Since</dt>
+            <dd>{formatDate(device.connectedSince)}</dd>
+          </div>
+        </dl>
 
-      <div className={styles.cardActions}>
-        {isSynced && (
+        {actionError && (
+          <p role="alert" className={styles.syncError}>
+            {actionError}
+          </p>
+        )}
+
+        <div className={styles.cardActions}>
+          {isSynced && (
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={handleSyncNow}
+              disabled={syncing}
+              aria-busy={syncing}
+            >
+              {syncing ? "Syncing…" : "Sync Now"}
+            </button>
+          )}
+          {isStaleOrFailed && (
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={handleReconnect}
+              disabled={reconnecting}
+              aria-busy={reconnecting}
+            >
+              {reconnecting ? "Reconnecting…" : "Reconnect"}
+            </button>
+          )}
           <button
             type="button"
-            className={styles.btnSecondary}
-            onClick={handleSyncNow}
-            disabled={syncing}
-            aria-busy={syncing}
+            className={styles.btnDanger}
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            aria-busy={disconnecting}
           >
-            {syncing ? "Syncing…" : "Sync Now"}
+            {disconnecting ? "Disconnecting…" : "Disconnect"}
           </button>
-        )}
-        {isStaleOrFailed && (
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={handleReconnect}
-            disabled={reconnecting}
-            aria-busy={reconnecting}
-          >
-            {reconnecting ? "Reconnecting…" : "Reconnect"}
-          </button>
-        )}
-        <button
-          type="button"
-          className={styles.btnDanger}
-          onClick={handleDisconnect}
-          disabled={disconnecting}
-          aria-busy={disconnecting}
-        >
-          {disconnecting ? "Disconnecting…" : "Disconnect"}
-        </button>
+        </div>
       </div>
     </li>
   );
