@@ -133,7 +133,7 @@ function renderAlertsPage() {
 beforeEach(() => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
-    if (path === "/recommendations") return Promise.resolve(makeRecsResponse());
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
 });
@@ -442,7 +442,7 @@ test("hydration nudge card message text is rendered", async () => {
 test("Personalized Recommendations section is absent when API returns empty array", async () => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
-    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderAlertsPage();
@@ -453,7 +453,7 @@ test("Personalized Recommendations section is absent when API returns empty arra
 test("no error node when recommendations API returns empty array", async () => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
-    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderAlertsPage();
@@ -464,7 +464,7 @@ test("no error node when recommendations API returns empty array", async () => {
 test("Health Alerts and Health Insights sections remain visible when recommendations are empty", async () => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
-    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderAlertsPage();
@@ -496,7 +496,7 @@ test("recommendation cards have no red or orange colour classes", async () => {
 test("Dismiss button removes the card from view immediately", async () => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
-    if (path === "/recommendations") return Promise.resolve(makeRecsResponse());
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     if (typeof path === "string" && path.includes("/status")) return Promise.resolve({ data: {} });
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
@@ -512,11 +512,11 @@ test("Dismiss button removes the card from view immediately", async () => {
   });
 });
 
-test("calls GET /recommendations on mount", async () => {
+test("calls GET /recommendations/nudges on mount", async () => {
   renderAlertsPage();
   await waitFor(() => {
     expect(mockApiFetch).toHaveBeenCalledWith(
-      "/recommendations",
+      "/recommendations/nudges",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
