@@ -637,3 +637,283 @@ describe("PUT /api/v1/profile — unrecognized personaMode → 422", () => {
     expect(detail?.code).toBe("INVALID_ENUM");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 422 when fullName is below minimum length (1 character)
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — fullName too short → 422", () => {
+  it("returns HTTP 422 when fullName is a single character", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ fullName: "A" });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("returns error.type REQUEST_VALIDATION_FAILED when fullName is one character", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ fullName: "X" });
+
+    const body = res.body as { error: { type: string } };
+    expect(body.error.type).toBe("REQUEST_VALIDATION_FAILED");
+  });
+
+  it("returns a field-level error detail identifying 'fullName' when fullName is too short", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ fullName: "Z" });
+
+    const body = res.body as { error: { details: Array<{ field: string }> } };
+    expect(body.error.details.some((d) => d.field === "fullName")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PUT does not touch health_records
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — health_records table untouched", () => {
+  it("leaves the health_records table empty after a successful PUT", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "everyday_wellness" });
+
+    const db = new Database(dbPath);
+    const rows = db
+      .prepare("SELECT COUNT(*) AS cnt FROM health_records WHERE user_id = ?")
+      .get(userId) as { cnt: number };
+    db.close();
+
+    expect(rows.cnt).toBe(0);
+  });
+
+  it("does not modify pre-existing health_records rows after a successful PUT", async () => {
+    // buildApp() must run first to apply migrations before seeding
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    // Seed a device_connection needed by health_records FK, then a health record
+    const db = new Database(dbPath);
+    const deviceId = "device-00000000-0000-0000-0000-000000000001";
+    const recordId = "record-00000000-0000-0000-0000-000000000001";
+    db.prepare(
+      `INSERT INTO device_connections (id, user_id, device_type, connection_status, created_at, updated_at)
+       VALUES (?, ?, 'smartwatch', 'connected', strftime('%Y-%m-%dT%H:%M:%SZ','now'), strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
+    ).run(deviceId, userId);
+    db.prepare(
+      `INSERT INTO health_records (id, user_id, device_connection_id, metric_domain, source_type, metric_name, value, recorded_at, created_at, updated_at)
+       VALUES (?, ?, ?, 'activity', 'smartwatch', 'steps', 8000, strftime('%Y-%m-%dT%H:%M:%SZ','now'), strftime('%Y-%m-%dT%H:%M:%SZ','now'), strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
+    ).run(recordId, userId, deviceId);
+    db.close();
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "active_fitness" });
+
+    const db2 = new Database(dbPath);
+    const row = db2
+      .prepare("SELECT id, value FROM health_records WHERE id = ?")
+      .get(recordId) as { id: string; value: number } | undefined;
+    db2.close();
+
+    expect(row).toBeDefined();
+    expect(row!.id).toBe(recordId);
+    expect(row!.value).toBe(8000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/profile — returns profile or defaults
+// ---------------------------------------------------------------------------
+
+describe("GET /api/v1/profile — no profile row → 200 with defaults", () => {
+  it("returns HTTP 200 when no profile row exists yet", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns email from users table when no profile row exists", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    const body = res.body as { data: { profile: { email: string } } };
+    expect(body.data.profile.email).toBe("test@example.com");
+  });
+
+  it("returns personaMode 'everyday_wellness' as default when no profile row exists", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    const body = res.body as { data: { profile: { personaMode: string } } };
+    expect(body.data.profile.personaMode).toBe("everyday_wellness");
+  });
+
+  it("returns empty wellnessPreferences array as default when no profile row exists", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    const body = res.body as { data: { profile: { wellnessPreferences: string[] } } };
+    expect(body.data.profile.wellnessPreferences).toEqual([]);
+  });
+});
+
+describe("GET /api/v1/profile — after PUT → reflects saved values", () => {
+  it("returns HTTP 200 after PUT has created a profile", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "everyday_wellness" });
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("GET returns data.profile.fullName matching the previously PUT fullName", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "everyday_wellness" });
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    const body = res.body as { data: { profile: { fullName: string } } };
+    expect(body.data.profile.fullName).toBe("Sarah Chen");
+  });
+
+  it("GET returns data.profile.personaMode matching the previously PUT personaMode", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "active_fitness" });
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    const body = res.body as { data: { profile: { personaMode: string } } };
+    expect(body.data.profile.personaMode).toBe("active_fitness");
+  });
+
+  it("GET returns data.profile.email from users table", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    const body = res.body as { data: { profile: { email: string } } };
+    expect(body.data.profile.email).toBe("test@example.com");
+  });
+
+  it("GET returns data.profile.userId matching the authenticated user", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const res = await supertest(app)
+      .get("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`);
+
+    const body = res.body as { data: { profile: { userId: string } } };
+    expect(body.data.profile.userId).toBe(userId);
+  });
+});
+
+describe("GET /api/v1/profile — no auth token → 401", () => {
+  it("returns HTTP 401 when no Authorization header is sent", async () => {
+    const app = await buildApp();
+
+    const res = await supertest(app).get("/api/v1/profile");
+
+    expect(res.status).toBe(401);
+  });
+});
