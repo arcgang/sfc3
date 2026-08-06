@@ -14,6 +14,18 @@ export interface InsightRow {
   updated_at: string;
 }
 
+export interface EngagementEventRow {
+  id: string;
+  user_id: string;
+  event_type: string;
+  occurred_at: string;
+  event_date: string;
+  event_timestamp: string;
+  event_context_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const MIN_HEALTH_RECORDS = 3;
 
 const NUDGES: { content: string }[] = [
@@ -104,5 +116,44 @@ export class RecommendationService {
       .run(status, now, id);
 
     return { ...existing, status, updated_at: now };
+  }
+
+  getNudges(userId: string): InsightRow[] {
+    return this.db
+      .prepare<[string], InsightRow>(
+        `SELECT id, user_id, goal_id, insight_type, generator_name,
+                content, user_data_only, status, created_at, updated_at
+           FROM insights
+          WHERE user_id = ?
+            AND status = 'active'
+            AND insight_type = 'nudge'
+          ORDER BY created_at ASC
+          LIMIT 3`,
+      )
+      .all(userId);
+  }
+
+  dismissNudge(id: string, userId: string): InsightRow {
+    const updated = this.setStatus(id, userId, "dismissed");
+    this._recordEngagementEvent(userId, id);
+    return updated;
+  }
+
+  markNudgeDone(id: string, userId: string): InsightRow {
+    const updated = this.setStatus(id, userId, "done");
+    this._recordEngagementEvent(userId, id);
+    return updated;
+  }
+
+  private _recordEngagementEvent(userId: string, nudgeId: string): void {
+    const now = new Date().toISOString();
+    const today = now.slice(0, 10);
+    this.db
+      .prepare<[string, string, string, string, string, string]>(
+        `INSERT INTO engagement_events
+           (id, user_id, event_type, occurred_at, event_date, event_timestamp, event_context_json)
+         VALUES (?, ?, 'nudge_dismiss', ?, ?, ?, ?)`,
+      )
+      .run(randomUUID(), userId, now, today, now, JSON.stringify({ nudge_id: nudgeId }));
   }
 }
