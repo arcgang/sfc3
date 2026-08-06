@@ -26,6 +26,11 @@ export interface EngagementEventRow {
   updated_at: string;
 }
 
+export interface NudgeDismissResult {
+  dismissed: InsightRow;
+  next_nudge: InsightRow | null;
+}
+
 const MIN_HEALTH_RECORDS = 3;
 
 const NUDGES: { content: string }[] = [
@@ -133,16 +138,18 @@ export class RecommendationService {
       .all(userId);
   }
 
-  dismissNudge(id: string, userId: string): InsightRow {
-    const updated = this.setStatus(id, userId, "dismissed");
+  dismissNudge(id: string, userId: string): NudgeDismissResult {
+    const dismissed = this.setStatus(id, userId, "dismissed");
     this._recordEngagementEvent(userId, id);
-    return updated;
+    const remaining = this.getNudges(userId);
+    return { dismissed, next_nudge: remaining[0] ?? null };
   }
 
-  markNudgeDone(id: string, userId: string): InsightRow {
-    const updated = this.setStatus(id, userId, "done");
+  markNudgeDone(id: string, userId: string): NudgeDismissResult {
+    const dismissed = this.setStatus(id, userId, "done");
     this._recordEngagementEvent(userId, id);
-    return updated;
+    const remaining = this.getNudges(userId);
+    return { dismissed, next_nudge: remaining[0] ?? null };
   }
 
   private _recordEngagementEvent(userId: string, nudgeId: string): void {

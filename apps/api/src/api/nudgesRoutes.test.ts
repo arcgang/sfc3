@@ -298,7 +298,7 @@ describe("POST /api/v1/recommendations/nudges/:id/dismiss", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 200 and data.status is 'dismissed'", async () => {
+  it("returns 200 and data.dismissed.status is 'dismissed'", async () => {
     const userId = randomUUID();
     const dbPath = join(ctx.tmpDir, "test.db");
     const app = await buildApp();
@@ -310,8 +310,8 @@ describe("POST /api/v1/recommendations/nudges/:id/dismiss", () => {
       .set("Authorization", `Bearer ${makeToken(userId)}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.id).toBe(nudgeId);
-    expect(res.body.data.status).toBe("dismissed");
+    expect(res.body.data.dismissed.id).toBe(nudgeId);
+    expect(res.body.data.dismissed.status).toBe("dismissed");
   });
 
   it("inserts an engagement_events row with event_type='nudge_dismiss'", async () => {
@@ -387,6 +387,39 @@ describe("POST /api/v1/recommendations/nudges/:id/dismiss", () => {
     const ids = (listRes.body.data as { id: string }[]).map((n) => n.id);
     expect(ids).not.toContain(nudgeId);
   });
+
+  it("data.next_nudge is null when no other active nudges remain", async () => {
+    const userId = randomUUID();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const app = await buildApp();
+    seedUser(dbPath, userId);
+    const nudgeId = seedNudge(dbPath, userId, "Only nudge.");
+
+    const res = await supertest(app)
+      .post(`/api/v1/recommendations/nudges/${nudgeId}/dismiss`)
+      .set("Authorization", `Bearer ${makeToken(userId)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.next_nudge).toBeNull();
+  });
+
+  it("data.next_nudge contains the next active nudge when one exists", async () => {
+    const userId = randomUUID();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const app = await buildApp();
+    seedUser(dbPath, userId);
+    const nudgeId1 = seedNudge(dbPath, userId, "First nudge.");
+    const nudgeId2 = seedNudge(dbPath, userId, "Second nudge.");
+
+    const res = await supertest(app)
+      .post(`/api/v1/recommendations/nudges/${nudgeId1}/dismiss`)
+      .set("Authorization", `Bearer ${makeToken(userId)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.next_nudge).not.toBeNull();
+    expect(res.body.data.next_nudge.id).toBe(nudgeId2);
+    expect(res.body.data.next_nudge.status).toBe("active");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -431,7 +464,7 @@ describe("POST /api/v1/recommendations/nudges/:id/mark-done", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 200 and data.status is 'done'", async () => {
+  it("returns 200 and data.dismissed.status is 'done'", async () => {
     const userId = randomUUID();
     const dbPath = join(ctx.tmpDir, "test.db");
     const app = await buildApp();
@@ -443,8 +476,8 @@ describe("POST /api/v1/recommendations/nudges/:id/mark-done", () => {
       .set("Authorization", `Bearer ${makeToken(userId)}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.id).toBe(nudgeId);
-    expect(res.body.data.status).toBe("done");
+    expect(res.body.data.dismissed.id).toBe(nudgeId);
+    expect(res.body.data.dismissed.status).toBe("done");
   });
 
   it("inserts an engagement_events row with event_type='nudge_dismiss' when marked done", async () => {
@@ -499,5 +532,38 @@ describe("POST /api/v1/recommendations/nudges/:id/mark-done", () => {
     expect(listRes.status).toBe(200);
     const ids = (listRes.body.data as { id: string }[]).map((n) => n.id);
     expect(ids).not.toContain(nudgeId);
+  });
+
+  it("data.next_nudge is null when no other active nudges remain after mark-done", async () => {
+    const userId = randomUUID();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const app = await buildApp();
+    seedUser(dbPath, userId);
+    const nudgeId = seedNudge(dbPath, userId, "Only nudge to mark done.");
+
+    const res = await supertest(app)
+      .post(`/api/v1/recommendations/nudges/${nudgeId}/mark-done`)
+      .set("Authorization", `Bearer ${makeToken(userId)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.next_nudge).toBeNull();
+  });
+
+  it("data.next_nudge contains the next active nudge when one exists after mark-done", async () => {
+    const userId = randomUUID();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const app = await buildApp();
+    seedUser(dbPath, userId);
+    const nudgeId1 = seedNudge(dbPath, userId, "First mark-done nudge.");
+    const nudgeId2 = seedNudge(dbPath, userId, "Second active nudge.");
+
+    const res = await supertest(app)
+      .post(`/api/v1/recommendations/nudges/${nudgeId1}/mark-done`)
+      .set("Authorization", `Bearer ${makeToken(userId)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.next_nudge).not.toBeNull();
+    expect(res.body.data.next_nudge.id).toBe(nudgeId2);
+    expect(res.body.data.next_nudge.status).toBe("active");
   });
 });

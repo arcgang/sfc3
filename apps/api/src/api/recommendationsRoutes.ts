@@ -101,10 +101,10 @@ recommendationsRouter.post("/nudges/:id/dismiss", (req: Request, res: Response):
   const svc = new RecommendationService(getDatabase());
 
   try {
-    const updated = svc.dismissNudge(id, userId);
+    const result = svc.dismissNudge(id, userId);
     res.status(200).json({
       meta: { correlationId, timestamp: new Date().toISOString() },
-      data: updated,
+      data: result,
     });
   } catch (err: unknown) {
     const isNotFound =
@@ -154,10 +154,10 @@ recommendationsRouter.post("/nudges/:id/mark-done", (req: Request, res: Response
   const svc = new RecommendationService(getDatabase());
 
   try {
-    const updated = svc.markNudgeDone(id, userId);
+    const result = svc.markNudgeDone(id, userId);
     res.status(200).json({
       meta: { correlationId, timestamp: new Date().toISOString() },
-      data: updated,
+      data: result,
     });
   } catch (err: unknown) {
     const isNotFound =
