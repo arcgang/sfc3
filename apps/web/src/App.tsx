@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.js";
 import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout.js";
 import { ConnectedDevicesPage } from "./pages/ConnectedDevicesPage.js";
+import { MyAccountPage } from "./pages/MyAccountPage.js";
 import { Footer } from "./components/Footer.js";
 import { Layout } from "./components/Layout.js";
 import { AlertsPage } from "./pages/AlertsPage.js";
@@ -44,6 +45,7 @@ export function App() {
         <Route element={<AuthenticatedLayout />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/my-account" element={<MyAccountPage />} />
             <Route path="/goals" element={<GoalsProgressPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/devices" element={<ConnectedDevicesPage />} />

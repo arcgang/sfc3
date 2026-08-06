@@ -161,6 +161,28 @@ export function MyAccountPage() {
                 </label>
               ))}
             </div>
+
+            <button
+              type="button"
+              className={styles.saveButton}
+              onClick={handlePersonaSave}
+              disabled={personaSaving}
+            >
+              {personaSaving ? "Saving…" : "Save Dashboard Mode"}
+            </button>
+          </section>
+
+          {/* ── Wellness Preferences section ── */}
+          <section aria-labelledby="wellness-prefs-heading" className={styles.section}>
+            <h2 id="wellness-prefs-heading" className={styles.sectionTitle}>Wellness Preferences</h2>
+            <div className={styles.prefsList}>
+              <div className={styles.prefItem}>
+                <span className={styles.prefLabel}>Goal Preferences</span>
+                <span className={styles.prefDesc}>Daily step goals, weekly activity targets</span>
+              </div>
+              <div className={styles.prefItem}>
+                <span className={styles.prefLabel}>Notification Preferences</span>
+                <span className={styles.prefDesc}>Email alerts for stale data and goal milestones</span>
           </section>
 
           <section aria-labelledby="wellness-prefs-heading" className={styles.section}>
@@ -179,6 +201,56 @@ export function MyAccountPage() {
             </div>
           </section>
 
+          {/* ── Privacy & Data section ── */}
+          <section aria-labelledby="privacy-section-heading" className={styles.section}>
+            <h2 id="privacy-section-heading" className={styles.sectionTitle}>
+              Privacy &amp; Data Settings
+            </h2>
+            <p className={styles.privacyNote}>
+              You own your health data. You can export or delete it anytime.
+            </p>
+            <p className={styles.sectionDesc}>
+              Your wellness data is encrypted, secure, and never sold to third parties. We are
+              committed to protecting your privacy and giving you full control over your
+              information.
+            </p>
+            <div className={styles.privacyActions}>
+              <button type="button" className={styles.secondaryButton}>
+                Export My Data
+              </button>
+              <button type="button" className={styles.dangerButton}>
+                Delete My Account
+              </button>
+            </div>
+          </section>
+
+          {/* ── Security section ── */}
+          <section aria-labelledby="security-section-heading" className={styles.section}>
+            <h2 id="security-section-heading" className={styles.sectionTitle}>Security</h2>
+            <dl className={styles.securityList}>
+              <div className={styles.securityItem}>
+                <dt>Password</dt>
+                <dd>
+                  <a
+                    href="#change-password-noop"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Change Password
+                  </a>
+                </dd>
+              </div>
+              <div className={styles.securityItem}>
+                <dt>Active Sessions</dt>
+                <dd>
+                  <a
+                    href="#view-sessions-noop"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    View Sessions
+                  </a>
+                </dd>
+              </div>
+            </dl>
           <section aria-labelledby="privacy-heading" className={styles.section}>
             <h2 id="privacy-heading" className={styles.sectionHeading}>Privacy &amp; Data Settings</h2>
             <p className={styles.sectionDesc}>You own your health data. You can export or delete it anytime.</p>
