@@ -55,6 +55,29 @@ export interface UserProfileSummary {
   personaMode: string;
 }
 
+const STALE_HOURS = 12;
+const TREND_DAYS = 7;
+
+// ---------------------------------------------------------------------------
+// Trend data
+// ---------------------------------------------------------------------------
+
+export interface StepsDayPoint {
+  date: string;       // YYYY-MM-DD
+  stepCount: number;
+}
+
+export interface HeartRatePoint {
+  recordedAt: string; // ISO 8601
+  bpm: number;
+}
+
+export interface TrendsData {
+  steps7d: StepsDayPoint[];
+  heartRateToday: HeartRatePoint[];
+  stepsGoal: number | null;
+}
+
 interface DeviceRow {
   device_type: string;
   connection_status: string;
@@ -170,6 +193,77 @@ export class DashboardDao {
     return {
       fullName: row?.full_name ?? "",
       personaMode: row?.persona_mode ?? "default",
+    };
+  }
+
+  getTrendsForUser(userId: string): TrendsData {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const windowStart = new Date(now.getTime() - (TREND_DAYS - 1) * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    // Daily max step_count per calendar day over the last 7 days
+    interface StepsRow { day: string; step_count: number }
+    const stepsRows = this.db
+      .prepare(
+        `SELECT substr(recorded_at, 1, 10) AS day,
+                MAX(value)                 AS step_count
+           FROM health_records
+          WHERE user_id    = ?
+            AND source_type = 'smartwatch'
+            AND metric_name = 'step_count'
+            AND substr(recorded_at, 1, 10) >= ?
+            AND substr(recorded_at, 1, 10) <= ?
+          GROUP BY day
+          ORDER BY day ASC
+          LIMIT ?`,
+      )
+      .all(userId, windowStart, todayStr, TREND_DAYS) as StepsRow[];
+
+    const steps7d: StepsDayPoint[] = stepsRows.map((r) => ({
+      date: r.day,
+      stepCount: r.step_count,
+    }));
+
+    // Intraday heart_rate_bpm readings for today
+    interface HrRow { recorded_at: string; value: number }
+    const hrRows = this.db
+      .prepare(
+        `SELECT recorded_at, value
+           FROM health_records
+          WHERE user_id    = ?
+            AND source_type = 'smartwatch'
+            AND metric_name = 'heart_rate_bpm'
+            AND substr(recorded_at, 1, 10) = ?
+          ORDER BY recorded_at ASC
+          LIMIT 1440`,
+      )
+      .all(userId, todayStr) as HrRow[];
+
+    const heartRateToday: HeartRatePoint[] = hrRows.map((r) => ({
+      recordedAt: r.recorded_at,
+      bpm: r.value,
+    }));
+
+    // Steps goal from active goals
+    interface GoalRow { target_value: number }
+    const goalRow = this.db
+      .prepare(
+        `SELECT target_value
+           FROM goals
+          WHERE user_id   = ?
+            AND goal_type = 'steps_daily'
+            AND status NOT IN ('archived', 'completed')
+          ORDER BY created_at DESC
+          LIMIT 1`,
+      )
+      .get(userId) as GoalRow | undefined;
+
+    return {
+      steps7d,
+      heartRateToday,
+      stepsGoal: goalRow?.target_value ?? null,
     };
   }
 
