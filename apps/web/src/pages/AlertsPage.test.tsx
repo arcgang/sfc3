@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { vi, type MockedFunction } from "vitest";
 import { AlertsPage } from "./AlertsPage.js";
@@ -71,6 +71,49 @@ function makeDashboardResponse(overrides: {
   };
 }
 
+const THREE_RECS = [
+  {
+    id: "rec-1",
+    insight_type: "nudge",
+    content: "Try a 10-minute walk after lunch to boost your afternoon energy and help reach your daily step goal.",
+    status: "active",
+    user_id: "u1",
+    goal_id: null,
+    generator_name: null,
+    user_data_only: 1,
+    created_at: "2026-08-06T00:00:00.000Z",
+    updated_at: "2026-08-06T00:00:00.000Z",
+  },
+  {
+    id: "rec-2",
+    insight_type: "nudge",
+    content: "Consider setting a consistent bedtime alarm for 10:30 PM to maintain your improved sleep schedule.",
+    status: "active",
+    user_id: "u1",
+    goal_id: null,
+    generator_name: null,
+    user_data_only: 1,
+    created_at: "2026-08-06T00:00:00.000Z",
+    updated_at: "2026-08-06T00:00:00.000Z",
+  },
+  {
+    id: "rec-3",
+    insight_type: "nudge",
+    content: "Your activity level is high today. Remember to stay hydrated by drinking water regularly throughout the day, especially during and after exercise.",
+    status: "active",
+    user_id: "u1",
+    goal_id: null,
+    generator_name: null,
+    user_data_only: 1,
+    created_at: "2026-08-06T00:00:00.000Z",
+    updated_at: "2026-08-06T00:00:00.000Z",
+  },
+];
+
+function makeRecsResponse(recs = THREE_RECS) {
+  return { data: recs };
+}
+
 function renderAlertsPage() {
   return render(
     <AuthProvider>
@@ -88,7 +131,11 @@ function renderAlertsPage() {
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  mockApiFetch.mockResolvedValue(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse());
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
 });
 
 afterEach(() => {
@@ -313,6 +360,163 @@ test("calls GET /dashboard on mount", async () => {
   await waitFor(() => {
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/dashboard",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+});
+
+// ── Health Alerts section ─────────────────────────────────────────────────────
+
+test("Health Alerts section has h2 heading", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+});
+
+test("Health Alerts section renders before Health Insights section", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const headings = screen.getAllByRole("heading", { level: 2 });
+  const alertsIdx = headings.findIndex((h) => h.textContent === "Health Alerts");
+  const insightsIdx = headings.findIndex((h) => h.textContent === "Health Insights");
+  expect(alertsIdx).toBeLessThan(insightsIdx);
+});
+
+// ── Personalized Recommendations section ─────────────────────────────────────
+
+test("Personalized Recommendations section has h2 heading when recs are returned", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+});
+
+test("renders three recommendation cards when API returns three items", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  expect(within(section).getAllByRole("button", { name: "Mark as Done" }).length).toBe(3);
+  expect(within(section).getAllByRole("button", { name: "Dismiss" }).length).toBe(3);
+});
+
+test("each recommendation card shows 'Mark as Done' and 'Dismiss' buttons", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  const cards = within(section).getAllByRole("button", { name: "Mark as Done" });
+  expect(cards.length).toBeGreaterThanOrEqual(1);
+  const dismissButtons = within(section).getAllByRole("button", { name: "Dismiss" });
+  expect(dismissButtons.length).toBeGreaterThanOrEqual(1);
+});
+
+test("walk nudge card message text is rendered", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  expect(
+    within(section).getByText(
+      "Try a 10-minute walk after lunch to boost your afternoon energy and help reach your daily step goal.",
+    ),
+  ).toBeTruthy();
+});
+
+test("bedtime alarm nudge card message text is rendered", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  expect(
+    within(section).getByText(
+      "Consider setting a consistent bedtime alarm for 10:30 PM to maintain your improved sleep schedule.",
+    ),
+  ).toBeTruthy();
+});
+
+test("hydration nudge card message text is rendered", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  expect(
+    within(section).getByText(
+      "Your activity level is high today. Remember to stay hydrated by drinking water regularly throughout the day, especially during and after exercise.",
+    ),
+  ).toBeTruthy();
+});
+
+test("Personalized Recommendations section is absent when API returns empty array", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Insights", level: 2 });
+  expect(screen.queryByRole("heading", { name: "Personalized Recommendations", level: 2 })).toBeNull();
+});
+
+test("no error node when recommendations API returns empty array", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Insights", level: 2 });
+  expect(document.querySelector("[role='alert']")).toBeNull();
+});
+
+test("Health Alerts and Health Insights sections remain visible when recommendations are empty", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  await screen.findByRole("heading", { name: "Health Insights", level: 2 });
+});
+
+test("recommendations are not mixed into the Health Alerts list", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const alertsSection = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(alertsSection).queryByRole("button", { name: "Mark as Done" })).toBeNull();
+  expect(within(alertsSection).queryByRole("button", { name: "Dismiss" })).toBeNull();
+});
+
+test("recommendation cards have no red or orange colour classes", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  const cards = within(section).getAllByRole("button", { name: "Mark as Done" })
+    .map((btn) => btn.closest("[data-rec-id]"));
+  for (const card of cards) {
+    expect(card).not.toBeNull();
+    const classStr = (card as HTMLElement).className ?? "";
+    expect(classStr).not.toMatch(/red|orange|danger|alert/i);
+  }
+});
+
+test("Dismiss button removes the card from view immediately", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.includes("/status")) return Promise.resolve({ data: {} });
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendations", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendations" });
+  const cards = within(section).getAllByRole("button", { name: "Mark as Done" });
+  expect(cards.length).toBe(3);
+
+  fireEvent.click(within(section).getAllByRole("button", { name: "Dismiss" })[0]!);
+  await waitFor(() => {
+    expect(within(section).getAllByRole("button", { name: "Dismiss" }).length).toBe(2);
+  });
+});
+
+test("calls GET /recommendations on mount", async () => {
+  renderAlertsPage();
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/recommendations",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });

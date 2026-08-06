@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import styles from "./DashboardPage.module.css";
 
+// ── Recommendation type ───────────────────────────────────────────────────────
+
+interface Recommendation {
+  id: string;
+  content: string;
+  status: string;
+}
+
 // ── Types mirroring the API response ─────────────────────────────────────────
 
 type CardId = "HeartRate" | "Steps" | "BloodPressure" | "Sleep";
@@ -577,6 +585,8 @@ export function DashboardPage() {
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [goalsError, setGoalsError] = useState<string | null>(null);
 
+  const [inlineRec, setInlineRec] = useState<Recommendation | null>(null);
+
   const staleRefreshFired = useRef(false);
   const hasLoadedOnce = useRef(false);
 
@@ -632,6 +642,25 @@ export function DashboardPage() {
         if (err instanceof Error && err.name === "AbortError") return;
         setGoalsError("Failed to load goals.");
         setGoalsLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    apiFetch<{ data: Recommendation[] }>("/recommendations", { signal: controller.signal })
+      .then((res) => {
+        const items = Array.isArray(res.data) ? res.data : [];
+        const active = items.filter((r) => r.status === "active");
+        setInlineRec(active[0] ?? null);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setInlineRec(null);
       });
 
     return () => {
@@ -871,6 +900,52 @@ export function DashboardPage() {
         )}
         <Link to="/goals" className={styles.viewAllLink}>View All Goals →</Link>
       </section>
+
+      {inlineRec !== null && (
+        <section aria-labelledby="inline-rec-heading" className={styles.inlineRecSection}>
+          <h2 id="inline-rec-heading">Personalized Recommendation</h2>
+          <div className={styles.inlineRecCard} data-rec-id={inlineRec.id}>
+            <p className={styles.inlineRecContent}>{inlineRec.content}</p>
+            <div className={styles.inlineRecActions}>
+              <button
+                type="button"
+                className={styles.inlineRecButton}
+                onClick={() => {
+                  apiFetch<{ data: Recommendation }>(`/recommendations/${inlineRec.id}/status`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status: "done" }),
+                  })
+                    .then(() => {
+                      apiFetch<{ data: Recommendation[] }>("/recommendations")
+                        .then((res) => {
+                          const items = Array.isArray(res.data) ? res.data : [];
+                          const active = items.filter((r) => r.status === "active");
+                          setInlineRec(active[0] ?? null);
+                        })
+                        .catch(() => setInlineRec(null));
+                    })
+                    .catch(() => {});
+                }}
+              >
+                Mark as Done
+              </button>
+              <button
+                type="button"
+                className={styles.inlineRecButton}
+                onClick={() => {
+                  setInlineRec(null);
+                  apiFetch<{ data: Recommendation }>(`/recommendations/${inlineRec.id}/status`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status: "dismissed" }),
+                  }).catch(() => {});
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
