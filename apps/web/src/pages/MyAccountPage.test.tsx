@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within, fireEvent, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MyAccountPage } from "./MyAccountPage.js";
@@ -46,11 +46,18 @@ function renderPage() {
   );
 }
 
+const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
 beforeEach(() => {
   vi.clearAllMocks();
+  consoleSpy.mockClear();
   mockApiFetch.mockResolvedValue({
     data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
   });
+});
+
+afterEach(() => {
+  consoleSpy.mockClear();
 });
 
 // ── Loading state ──────────────────────────────────────────────────────────────
@@ -188,7 +195,6 @@ describe("MyAccountPage — edit profile form", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { profile: updatedProfile } });
 
     renderPage();
@@ -212,7 +218,6 @@ describe("MyAccountPage — edit profile form", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { profile: updatedProfile } });
 
     renderPage();
@@ -257,7 +262,6 @@ describe("MyAccountPage — dashboard mode selector", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { profile: updatedProfile } });
 
     renderPage();
@@ -314,7 +318,6 @@ describe("MyAccountPage — dashboard mode selector", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockRejectedValueOnce(new Error("save failed"));
 
     renderPage();
@@ -353,9 +356,9 @@ describe("MyAccountPage — privacy and security", () => {
     await screen.findByRole("link", { name: "View Sessions" });
   });
 
-  it("renders the 'View our Privacy Policy' link pointing to /privacy", async () => {
+  it("renders the 'View full Privacy Policy' link pointing to /privacy", async () => {
     renderPage();
-    const link = await screen.findByRole("link", { name: "View our Privacy Policy" });
+    const link = await screen.findByRole("link", { name: "View full Privacy Policy" });
     expect(link.getAttribute("href")).toBe("/privacy");
   });
 
@@ -368,23 +371,40 @@ describe("MyAccountPage — privacy and security", () => {
   it("renders Privacy & Data Settings section with encryption/no-sale copy", async () => {
     renderPage();
     const section = await screen.findByRole("region", { name: "Privacy & Data Settings" });
-    expect(within(section).getByText(/never sold to third parties/)).toBeTruthy();
+    expect(within(section).getByText("Your wellness data is encrypted, secure, and never sold to third parties. We are committed to protecting your privacy and giving you full control over your information.")).toBeTruthy();
   });
 
-  it("calls GET /privacy/viewed on mount to emit the privacy.viewed audit event", async () => {
+  it("emits a structured console.log with category 'privacy.viewed' on mount", async () => {
     renderPage();
     await waitFor(() => {
-      const viewedCall = mockApiFetch.mock.calls.find(
-        (c) => c[0] === "/privacy/viewed",
-      );
+      const calls = consoleSpy.mock.calls;
+      const viewedCall = calls.find((c) => {
+        try {
+          const parsed = JSON.parse(c[0] as string) as { category: string };
+          return parsed.category === "privacy.viewed";
+        } catch {
+          return false;
+        }
+      });
       expect(viewedCall).toBeDefined();
     });
+  });
+
+  it("inline Privacy Policy block is present within the Privacy & Data Settings section", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Privacy & Data Settings" });
+    expect(within(section).getByRole("heading", { name: "Privacy Policy", level: 3 })).toBeTruthy();
+  });
+
+  it("inline Privacy Policy block contains no-sale-of-data language", async () => {
+    renderPage();
+    const inlinePolicy = await screen.findByRole("region", { name: "Privacy Policy" });
+    expect(within(inlinePolicy).getByText(/never sold to third parties/)).toBeTruthy();
   });
 
   it("calls POST /privacy/requests with requestType='export' when Export My Data is clicked", async () => {
     mockApiFetch
       .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({
         data: {
           requestId: "req-001",
@@ -412,7 +432,6 @@ describe("MyAccountPage — privacy and security", () => {
     const confirmMsg = "Your data export request has been received. You will be notified when it is ready.";
     mockApiFetch
       .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { requestId: "req-001", requestType: "export", requestStatus: "requested", message: confirmMsg } });
 
     renderPage();
@@ -425,7 +444,6 @@ describe("MyAccountPage — privacy and security", () => {
   it("shows an error message when the Export My Data request fails", async () => {
     mockApiFetch
       .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockRejectedValueOnce(new Error("Network error"));
 
     renderPage();
@@ -438,7 +456,6 @@ describe("MyAccountPage — privacy and security", () => {
   it("calls POST /privacy/requests with requestType='delete' when Delete My Account is clicked", async () => {
     mockApiFetch
       .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({
         data: {
           requestId: "req-002",
@@ -466,7 +483,6 @@ describe("MyAccountPage — privacy and security", () => {
     const confirmMsg = "Your account deletion request has been received. Your account will be processed for deletion.";
     mockApiFetch
       .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { requestId: "req-002", requestType: "delete", requestStatus: "requested", message: confirmMsg } });
 
     renderPage();
@@ -479,7 +495,6 @@ describe("MyAccountPage — privacy and security", () => {
   it("shows an error message when the Delete My Account request fails", async () => {
     mockApiFetch
       .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
-      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockRejectedValueOnce(new Error("Network error"));
 
     renderPage();
