@@ -1,0 +1,102 @@
+/* ── Wireframe design tokens ── Goals & Progress (and all pages) ─────────── */
+:root {
+  /* ── Colours ──────────────────────────────────────────────────────────────── */
+  --wh-color-teal:           #14b8a6;
+  --wh-color-teal-dark:      #0d9488;
+  --wh-color-teal-darker:    #115e59;
+  --wh-color-teal-bg:        #f0fdfa;
+  --wh-color-teal-bg-mid:    #ccfbf1;
+  --wh-color-teal-bg-deep:   #d1fae5;
+  --wh-color-teal-success:   #065f46;
+
+  --wh-color-text-primary:   #1f2937;
+  --wh-color-text-secondary: #6b7280;
+  --wh-color-text-dark:      #374151;
+
+  --wh-color-bg-white:       #ffffff;
+  --wh-color-bg-page:        #f9fafb;
+
+  --wh-color-border:         #e5e7eb;
+
+  --wh-color-danger:         #ef4444;
+  --wh-color-danger-bg:      #fee2e2;
+  --wh-color-danger-dark:    #991b1b;
+  --wh-color-danger-bg-alt:  #fef2f2;
+
+  --wh-color-warning:        #f59e0b;
+  --wh-color-warning-bg:     #fef3c7;
+  --wh-color-warning-amber:  #92400e;
+  --wh-color-warning-cream:  #fffbeb;
+
+  --wh-color-coral:          #ff6b6b;
+  --wh-color-coral-bg:       #fef2f2;
+
+  /* ── Font family ──────────────────────────────────────────────────────────── */
+  --wh-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+
+  /* ── Font sizes ───────────────────────────────────────────────────────────── */
+  --wh-font-size-2xs:  11px;
+  --wh-font-size-xs:   12px;
+  --wh-font-size-sm:   13px;
+  --wh-font-size-md:   14px;
+  --wh-font-size-base: 15px;
+  --wh-font-size-lg:   16px;
+  --wh-font-size-xl:   18px;
+  --wh-font-size-2xl:  20px;
+  --wh-font-size-3xl:  24px;
+  --wh-font-size-4xl:  28px;
+  --wh-font-size-5xl:  32px;
+  --wh-font-size-6xl:  40px;
+  --wh-font-size-7xl:  48px;
+
+  /* ── Spacing ──────────────────────────────────────────────────────────────── */
+  --wh-space-1:   4px;
+  --wh-space-2:   6px;
+  --wh-space-3:   8px;
+  --wh-space-4:   10px;
+  --wh-space-5:   12px;
+  --wh-space-6:   14px;
+  --wh-space-7:   16px;
+  --wh-space-8:   20px;
+  --wh-space-9:   24px;
+  --wh-space-10:  32px;
+  --wh-space-11:  40px;
+  --wh-space-12:  48px;
+  --wh-space-13:  64px;
+  --wh-space-14:  80px;
+  --wh-space-15: 200px;
+  --wh-space-16: 240px;
+
+  /* ── Border radii ─────────────────────────────────────────────────────────── */
+  --wh-radius-1:  3px;
+  --wh-radius-2:  4px;
+  --wh-radius-3:  5px;
+  --wh-radius-4:  6px;
+  --wh-radius-5:  8px;
+  --wh-radius-6: 12px;
+  --wh-radius-7: 16px;
+  --wh-radius-8: 20px;
+
+  /* ── Shadows ──────────────────────────────────────────────────────────────── */
+  --wh-shadow-xs:    0 1px 3px rgba(0, 0, 0, 0.05);
+  --wh-shadow-sm:    0 4px 24px rgba(0, 0, 0, 0.08);
+  --wh-shadow-md:    0 4px 16px rgba(0, 0, 0, 0.08);
+  --wh-shadow-focus: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  --wh-shadow-lg:    0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* ── Gradients ────────────────────────────────────────────────────────────── */
+  --wh-gradient-teal:      linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  --wh-gradient-teal-bg:   linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+  --wh-gradient-teal-h:    linear-gradient(90deg,  #14b8a6 0%, #0d9488 100%);
+  --wh-gradient-coral:     linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  --wh-gradient-danger-h:  linear-gradient(to right, #fee2e2 0%, #fecaca 50%, #fca5a5 100%);
+  --wh-gradient-blue-h:    linear-gradient(to right, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
+  --wh-gradient-amber-h:   linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  --wh-gradient-red-h:     linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+
+  /* ── Responsive breakpoints (consumed via media queries) ─────────────────── */
+  --wh-bp-sm:  480px;
+  --wh-bp-md:  768px;
+  --wh-bp-lg: 1024px;
+}
