@@ -543,4 +543,51 @@ describe("generateInsights — cross-user isolation", () => {
     expect(resultB.find((r: InsightObject) => r.category === "BodyCompositionTrend")).toBeUndefined();
     expect(resultB).toEqual([]);
   });
+
+  it("seeding sleep/HRV data for user A does not cause any insight for user B", async () => {
+    // anchor: Thursday 2026-01-08, week Mon 2026-01-05
+    const anchor = new Date("2026-01-08T00:00:00.000Z");
+
+    const userA = "user-sleep-hrv-a";
+    const userB = "user-sleep-hrv-b";
+    const devA = "dev-sleep-hrv-a";
+    const devB = "dev-sleep-hrv-b";
+
+    seedUser(userA);
+    seedDevice(userA, "smartwatch", devA);
+    seedUser(userB);
+    seedDevice(userB, "smartwatch", devB);
+
+    // User A: sleep data that would emit SleepQualityImproved
+    // Prior week (Mon 2025-12-29 – Sun 2026-01-04): avg 360 min
+    for (let i = 0; i < 7; i++) {
+      const d = new Date("2025-12-29T00:00:00.000Z");
+      d.setUTCDate(d.getUTCDate() + i);
+      seedHealthRecord(userA, devA, "sleep_minutes", 360, `${d.toISOString().slice(0, 10)}T06:00:00.000Z`, "sleep");
+    }
+    // This week (Mon 2026-01-05 – Thu 2026-01-08): avg 420 min
+    for (let i = 0; i < 4; i++) {
+      const d = new Date("2026-01-05T00:00:00.000Z");
+      d.setUTCDate(d.getUTCDate() + i);
+      seedHealthRecord(userA, devA, "sleep_minutes", 420, `${d.toISOString().slice(0, 10)}T06:00:00.000Z`, "sleep");
+    }
+
+    // User A: HRV data that would emit HeartRateVariability
+    // 28 days of baseline before this week (Mon 2026-01-05)
+    for (let i = 27; i >= 0; i--) {
+      const d = new Date("2025-12-29T00:00:00.000Z");
+      d.setUTCDate(d.getUTCDate() - i);
+      seedHealthRecord(userA, devA, "hrv", 50 + ((i % 5) - 2), `${d.toISOString().slice(0, 10)}T08:00:00.000Z`, "vitals");
+    }
+    // This week: outlier HRV for user A
+    seedHealthRecord(userA, devA, "hrv", 5, "2026-01-05T08:00:00.000Z", "vitals");
+
+    // User B has no health records
+    const { generateInsights } = await import("./generator.js");
+    const resultB = await generateInsights(userB, db, anchor);
+
+    expect(resultB.find((r: InsightObject) => r.category === "SleepQualityImproved")).toBeUndefined();
+    expect(resultB.find((r: InsightObject) => r.category === "HeartRateVariability")).toBeUndefined();
+    expect(resultB).toEqual([]);
+  });
 });
