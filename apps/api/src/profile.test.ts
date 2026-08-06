@@ -618,4 +618,22 @@ describe("PUT /api/v1/profile — unrecognized personaMode → 422", () => {
     };
     expect(body.error.details.some((d) => d.field === "personaMode")).toBe(true);
   });
+
+  it("returns error detail code=INVALID_ENUM for an unrecognized personaMode", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "ninja_mode" });
+
+    const body = res.body as {
+      error: { details: Array<{ field: string; code: string }> };
+    };
+    const detail = body.error.details.find((d) => d.field === "personaMode");
+    expect(detail?.code).toBe("INVALID_ENUM");
+  });
 });
