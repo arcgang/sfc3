@@ -120,8 +120,8 @@
 }
 
 .modeOption:has(input:checked) {
-  border-color: var(--color-accent);
-  background-color: #f0f0ff;
+  border-color: var(--color-teal-500);
+  background-color: var(--color-teal-50);
 }
 
 .modeOption input[type="radio"] {
