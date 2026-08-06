@@ -6,6 +6,10 @@ import jwt from "jsonwebtoken";
 import { getDatabase } from "../db/connection.js";
 import { validateBody } from "../middleware/validate.js";
 import type { ErrorResponse } from "../types/errors.js";
+import {
+  buildEmailServiceClient,
+  type EmailServiceClient,
+} from "../integrations/EmailServiceClient.js";
 
 const BCRYPT_ROUNDS = 12;
 const JWT_EXPIRY_SECONDS = 3600; // 1 hour
@@ -31,7 +35,10 @@ const passwordResetSchema = z.object({
 type RegisterBody = z.infer<typeof registerSchema>;
 type LoginBody = z.infer<typeof loginSchema>;
 
-export function buildAuthRouter(jwtSecret: string): Router {
+export function buildAuthRouter(
+  jwtSecret: string,
+  emailClient: EmailServiceClient = buildEmailServiceClient(),
+): Router {
   const router = Router();
 
   router.post(
@@ -211,18 +218,43 @@ export function buildAuthRouter(jwtSecret: string): Router {
       // password_reset_request
       // -----------------------------------------------------------------------
       if (mode === "password_reset_request") {
+        const { email } = req.body as { email: string };
+        const normalised = email.toLowerCase();
         const nowIso = new Date().toISOString();
-        console.log({
-          event: "auth.password_reset_request",
-          correlationId,
-        });
-        res.status(200).json({
-          meta: { correlationId, timestamp: nowIso },
-          data: {
-            message:
-              "If the account exists, password reset instructions have been sent.",
-          },
-        });
+
+        try {
+          const db = getDatabase();
+          const user = db
+            .prepare(`SELECT id FROM users WHERE email = ? LIMIT 1`)
+            .get(normalised) as { id: string } | undefined;
+
+          if (user) {
+            try {
+              await emailClient.sendPasswordResetInstructions(normalised);
+            } catch (emailErr) {
+              console.log({
+                event: "email.password_reset_instructions_failed",
+                correlationId,
+                error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+              });
+            }
+          }
+
+          console.log({
+            event: "auth.password_reset_requested",
+            correlationId,
+          });
+
+          res.status(200).json({
+            meta: { correlationId, timestamp: nowIso },
+            data: {
+              message:
+                "If the account exists, password reset instructions have been sent.",
+            },
+          });
+        } catch (err) {
+          next(err);
+        }
         return;
       }
 

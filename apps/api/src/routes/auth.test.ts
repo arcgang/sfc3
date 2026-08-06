@@ -6,6 +6,7 @@ import {
   afterEach,
   vi,
   type MockInstance,
+  type Mock,
 } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -58,7 +59,17 @@ afterEach(async () => {
 
 const TEST_JWT_SECRET = "test-jwt-secret-for-auth-tests";
 
-async function buildApp() {
+interface FakeEmailClient {
+  sendPasswordResetInstructions: Mock;
+}
+
+function buildFakeEmailClient(): FakeEmailClient {
+  return {
+    sendPasswordResetInstructions: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+async function buildApp(emailClient?: FakeEmailClient) {
   const dbPath = join(ctx.tmpDir, "test.db");
   process.env["DB_PATH"] = dbPath;
 
@@ -74,7 +85,7 @@ async function buildApp() {
   const app = express();
   app.use(express.json());
   app.use(correlationIdMiddleware);
-  app.use("/api/v1/auth", buildAuthRouter(TEST_JWT_SECRET));
+  app.use("/api/v1/auth", buildAuthRouter(TEST_JWT_SECRET, emailClient));
   app.use(errorHandler);
   return app;
 }
@@ -836,5 +847,115 @@ describe("POST /api/v1/auth/session mode=password_reset_request", () => {
       .send({ mode: "password_reset_request" });
 
     expect(res.status).toBe(422);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Password reset — security log event auth.password_reset_requested
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/auth/session mode=password_reset_request — security log emitted", () => {
+  it("emits console.log with event 'auth.password_reset_requested' for a known email", async () => {
+    const emailClient = buildFakeEmailClient();
+    const app = await buildApp(emailClient);
+    await registerUser(app);
+    consoleSpy.mockClear();
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: VALID_PAYLOAD.email });
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const hasEvent = calls.some(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.password_reset_requested",
+    );
+    expect(hasEvent).toBe(true);
+  });
+
+  it("emits console.log with event 'auth.password_reset_requested' for an unknown email", async () => {
+    const emailClient = buildFakeEmailClient();
+    const app = await buildApp(emailClient);
+    consoleSpy.mockClear();
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: "ghost@example.com" });
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const hasEvent = calls.some(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.password_reset_requested",
+    );
+    expect(hasEvent).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Password reset — email service dispatched iff account exists
+// ---------------------------------------------------------------------------
+
+describe("POST /api/v1/auth/session mode=password_reset_request — email service call", () => {
+  it("calls sendPasswordResetInstructions with the lowercased email when the account exists", async () => {
+    const emailClient = buildFakeEmailClient();
+    const app = await buildApp(emailClient);
+    await registerUser(app);
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: VALID_PAYLOAD.email.toUpperCase() });
+
+    expect(emailClient.sendPasswordResetInstructions).toHaveBeenCalledTimes(1);
+    expect(emailClient.sendPasswordResetInstructions).toHaveBeenCalledWith(
+      VALID_PAYLOAD.email.toLowerCase(),
+    );
+  });
+
+  it("does not call sendPasswordResetInstructions when no account matches the email", async () => {
+    const emailClient = buildFakeEmailClient();
+    const app = await buildApp(emailClient);
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: "nobody@example.com" });
+
+    expect(emailClient.sendPasswordResetInstructions).not.toHaveBeenCalled();
+  });
+
+  it("still returns 200 with the generic message even when the email service throws", async () => {
+    const emailClient = buildFakeEmailClient();
+    emailClient.sendPasswordResetInstructions.mockRejectedValueOnce(
+      new Error("SMTP unavailable"),
+    );
+    const app = await buildApp(emailClient);
+    await registerUser(app);
+
+    const res = await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: VALID_PAYLOAD.email });
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: { message: string } };
+    expect(body.data.message).toBe(
+      "If the account exists, password reset instructions have been sent.",
+    );
+  });
+
+  it("still emits auth.password_reset_requested even when the email service throws", async () => {
+    const emailClient = buildFakeEmailClient();
+    emailClient.sendPasswordResetInstructions.mockRejectedValueOnce(
+      new Error("SMTP unavailable"),
+    );
+    const app = await buildApp(emailClient);
+    await registerUser(app);
+    consoleSpy.mockClear();
+
+    await supertest(app)
+      .post("/api/v1/auth/session")
+      .send({ mode: "password_reset_request", email: VALID_PAYLOAD.email });
+
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const hasEvent = calls.some(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.password_reset_requested",
+    );
+    expect(hasEvent).toBe(true);
   });
 });
