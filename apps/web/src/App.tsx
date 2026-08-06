@@ -11,6 +11,7 @@ import { DashboardPage } from "./pages/DashboardPage.js";
 import { DevicePairingPage } from "./pages/DevicePairingPage.js";
 import { GoalsProgressPage } from "./pages/GoalsProgressPage.js";
 import { HomePage } from "./pages/HomePage";
+import { MyAccountPage } from "./pages/MyAccountPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { OnboardingPage } from "./pages/OnboardingPage.js";
 import { OnboardingProfilePage } from "./pages/OnboardingProfilePage.js";
@@ -48,6 +49,7 @@ export function App() {
             <Route path="/goals" element={<GoalsProgressPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/devices" element={<ConnectedDevicesPage />} />
+            <Route path="/my-account" element={<MyAccountPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Placeholder />} />
