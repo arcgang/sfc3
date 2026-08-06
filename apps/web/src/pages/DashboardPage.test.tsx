@@ -17,6 +17,24 @@ const mockApiFetch = apiModule.apiFetch as MockedFunction<typeof apiModule.apiFe
 
 // ── Fixture builders ──────────────────────────────────────────────────────────
 
+const SEVEN_DAYS_STEPS = [
+  { date: "2026-07-31", stepCount: 7210 },
+  { date: "2026-08-01", stepCount: 8040 },
+  { date: "2026-08-02", stepCount: 6400 },
+  { date: "2026-08-03", stepCount: 9100 },
+  { date: "2026-08-04", stepCount: 10220 },
+  { date: "2026-08-05", stepCount: 9870 },
+  { date: "2026-08-06", stepCount: 7842 },
+];
+
+const INTRADAY_HR = [
+  { recordedAt: "2026-08-06T08:00:00.000Z", bpm: 68 },
+  { recordedAt: "2026-08-06T10:00:00.000Z", bpm: 85 },
+  { recordedAt: "2026-08-06T12:00:00.000Z", bpm: 103 },
+  { recordedAt: "2026-08-06T14:00:00.000Z", bpm: 92 },
+  { recordedAt: "2026-08-06T16:00:00.000Z", bpm: 78 },
+];
+
 function makeDashboardResponse(overrides: {
   greeting?: string;
   personaMode?: string;
@@ -28,6 +46,11 @@ function makeDashboardResponse(overrides: {
     badge: string;
     emptyState: boolean;
   }>;
+  trends?: {
+    steps7d: Array<{ date: string; stepCount: number }>;
+    heartRateToday: Array<{ recordedAt: string; bpm: number }>;
+    stepsGoal: number | null;
+  };
 } = {}) {
   const defaultCards = [
     { id: "HeartRate", label: "Resting Heart Rate", value: 103, unit: "bpm", badge: "⚠️ Monitor", emptyState: false },
@@ -44,6 +67,11 @@ function makeDashboardResponse(overrides: {
         overallLastSyncAt: "2026-08-06T10:00:00.000Z",
         stalenessLabel: "Up to date",
         deviceStatuses: [],
+      },
+      trends: overrides.trends ?? {
+        steps7d: SEVEN_DAYS_STEPS,
+        heartRateToday: INTRADAY_HR,
+        stepsGoal: 10000,
       },
     },
   };
@@ -528,4 +556,95 @@ test("calls GET /goals on mount", async () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
+});
+
+// ── Trends section ────────────────────────────────────────────────────────────
+
+test("Trends section heading is rendered", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  screen.getByRole("heading", { name: "Trends", level: 2 });
+});
+
+test("heart rate chart heading is rendered", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  screen.getByRole("heading", { name: "Today's Heart Rate Fluctuations", level: 3 });
+});
+
+test("steps chart heading is rendered", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  screen.getByRole("heading", { name: "This Week's Step Activity", level: 3 });
+});
+
+test("heart rate chart renders an SVG image when data has 2+ points", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const img = screen.getByRole("img", { name: /today's heart rate fluctuations/i });
+  expect(img.tagName.toLowerCase()).toBe("svg");
+});
+
+test("heart rate chart SVG includes range and current BPM from data", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  // Range: 68–103 BPM | Current: 78 BPM
+  screen.getByText(/Range: 68.103 BPM/);
+});
+
+test("steps chart renders an SVG image when data has 2+ points", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const img = screen.getByRole("img", { name: /this week's step activity/i });
+  expect(img.tagName.toLowerCase()).toBe("svg");
+});
+
+test("steps chart SVG shows the goal reference in its label", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const img = screen.getByRole("img", { name: /this week's step activity/i });
+  expect(img.getAttribute("aria-label")).toContain("10,000");
+});
+
+test("steps chart shows goal meta text", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  screen.getByText(/Goal: 10,000 steps\/day/);
+});
+
+test("heart rate chart shows empty state when fewer than 2 data points", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          trends: { steps7d: SEVEN_DAYS_STEPS, heartRateToday: [{ recordedAt: "2026-08-06T08:00:00.000Z", bpm: 68 }], stepsGoal: 10000 },
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  screen.getByText(/Not enough heart rate data/);
+});
+
+test("steps chart shows empty state when fewer than 2 data points", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          trends: { steps7d: [{ date: "2026-08-06", stepCount: 7842 }], heartRateToday: INTRADAY_HR, stepsGoal: null },
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  screen.getByText(/Not enough step data/);
+});
+
+test("trends section renders both charts without secondary navigation", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  // Both charts visible at once — no tab/panel interaction required
+  expect(screen.getAllByRole("img", { name: /fluctuations|step activity/i }).length).toBe(2);
 });

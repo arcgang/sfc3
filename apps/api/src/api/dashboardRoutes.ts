@@ -40,6 +40,7 @@ dashboardRouter.get("/", (req: Request, res: Response): void => {
   const data = dao.getForUser(userId);
   const profile = dao.getUserProfile(userId);
   const cardMetrics = dao.getCardMetrics(userId);
+  const trends = dao.getTrendsForUser(userId);
 
   // Greeting derived from server wall-clock hour (UTC)
   const hourUtc = new Date().getUTCHours();
@@ -80,6 +81,7 @@ dashboardRouter.get("/", (req: Request, res: Response): void => {
       personaMode,
       summaryCards,
       lastSyncStatus,
+      trends,
       // Legacy raw device/metric fields preserved for existing consumers
       devices: data.devices,
       smartwatch: data.smartwatch,
