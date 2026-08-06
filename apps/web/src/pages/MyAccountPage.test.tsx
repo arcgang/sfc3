@@ -9,6 +9,16 @@ vi.mock("../api.js", async (importOriginal) => {
   return { ...actual, apiFetch: vi.fn() };
 });
 
+vi.mock("../context/AuthContext.js", async () => {
+  const actual = await vi.importActual<typeof import("../context/AuthContext.js")>(
+    "../context/AuthContext.js",
+  );
+  return {
+    ...actual,
+    useAuth: () => ({ isAuthenticated: true, token: "tok", logout: vi.fn() }),
+  };
+});
+
 const mockApiFetch = vi.mocked(api.apiFetch);
 
 const PROFILE_FIXTURE = {
@@ -28,44 +38,6 @@ const PROFILE_FIXTURE = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { App } from "../App.js";
-import { MyAccountPage } from "./MyAccountPage.js";
-
-// ── apiFetch mock ────────────────────────────────────────────────────────────
-
-type ApiFetchImpl = (path: string, opts?: RequestInit) => Promise<unknown>;
-
-const mockApiFetch = {
-  implementation: ((_path: string, _opts?: RequestInit): Promise<unknown> =>
-    Promise.resolve({
-      data: {
-        profile: {
-          fullName: "Alex Johnson",
-          personaMode: "default",
-        },
-      },
-    })) as ApiFetchImpl,
-};
-
-vi.mock("../api.js", () => ({
-  apiFetch: (path: string, opts?: RequestInit) =>
-    mockApiFetch.implementation(path, opts),
-  setToken: vi.fn(),
-  clearToken: vi.fn(),
-}));
-
-vi.mock("../context/AuthContext.js", async () => {
-  const actual = await vi.importActual<typeof import("../context/AuthContext.js")>(
-    "../context/AuthContext.js",
-  );
-  return {
-    ...actual,
-    useAuth: () => ({ isAuthenticated: true, token: "tok", logout: vi.fn() }),
-  };
-});
-
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -76,6 +48,9 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockApiFetch.mockResolvedValue({
+    data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
+  });
 });
 
 // ── Loading state ──────────────────────────────────────────────────────────────
@@ -94,7 +69,7 @@ describe("MyAccountPage — error state", () => {
   it("shows an error message when the fetch fails", async () => {
     mockApiFetch.mockRejectedValue(new Error("Network error"));
     renderPage();
-    await screen.findByText("Failed to load profile. Please try again.");
+    await screen.findByText("Could not load your profile. Please try again.");
   });
 
   it("renders a Retry button when the fetch fails", async () => {
@@ -107,12 +82,6 @@ describe("MyAccountPage — error state", () => {
 // ── Loaded state — page structure ─────────────────────────────────────────────
 
 describe("MyAccountPage — loaded state", () => {
-  beforeEach(() => {
-    mockApiFetch.mockResolvedValue({
-      data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
-    });
-  });
-
   it("renders the My Account heading", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "My Account", level: 1 });
@@ -147,12 +116,6 @@ describe("MyAccountPage — loaded state", () => {
 // ── Profile display ────────────────────────────────────────────────────────────
 
 describe("MyAccountPage — profile display", () => {
-  beforeEach(() => {
-    mockApiFetch.mockResolvedValue({
-      data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
-    });
-  });
-
   it("displays the user's full name in the profile section", async () => {
     renderPage();
     const section = await screen.findByRole("region", { name: "Profile" });
@@ -175,12 +138,6 @@ describe("MyAccountPage — profile display", () => {
 // ── Edit profile inline form ───────────────────────────────────────────────────
 
 describe("MyAccountPage — edit profile form", () => {
-  beforeEach(() => {
-    mockApiFetch.mockResolvedValue({
-      data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
-    });
-  });
-
   it("shows the edit form when Edit Profile is clicked", async () => {
     renderPage();
     const editBtn = await screen.findByRole("button", { name: "Edit Profile" });
@@ -202,6 +159,16 @@ describe("MyAccountPage — edit profile form", () => {
     act(() => { fireEvent.click(editBtn); });
     const input = screen.getByLabelText("Full Name");
     fireEvent.change(input, { target: { value: "A" } });
+    act(() => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
+    await screen.findByText("Full name must be between 2 and 120 characters.");
+  });
+
+  it("shows a validation error when name is empty", async () => {
+    renderPage();
+    const editBtn = await screen.findByRole("button", { name: "Edit Profile" });
+    act(() => { fireEvent.click(editBtn); });
+    const input = screen.getByLabelText("Full Name");
+    fireEvent.change(input, { target: { value: "" } });
     act(() => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
     await screen.findByText("Full name must be between 2 and 120 characters.");
   });
@@ -262,12 +229,6 @@ describe("MyAccountPage — edit profile form", () => {
 // ── Dashboard mode selector ────────────────────────────────────────────────────
 
 describe("MyAccountPage — dashboard mode selector", () => {
-  beforeEach(() => {
-    mockApiFetch.mockResolvedValue({
-      data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
-    });
-  });
-
   it("renders the three dashboard mode options", async () => {
     renderPage();
     await screen.findByRole("radio", { name: /Everyday Wellness/i });
@@ -316,17 +277,58 @@ describe("MyAccountPage — dashboard mode selector", () => {
       expect(body.personaMode).toBe("fitness");
     });
   });
+
+  it("has Active Fitness selected when personaMode is 'fitness'", async () => {
+    mockApiFetch.mockResolvedValueOnce({
+      data: {
+        email: "alex@example.com",
+        profile: { ...PROFILE_FIXTURE, personaMode: "fitness" },
+      },
+    });
+    renderPage();
+    const radio = (await screen.findByRole("radio", {
+      name: /Active Fitness/i,
+    })) as HTMLInputElement;
+    expect(radio.checked).toBe(true);
+  });
+
+  it("has Assisted / Chronic-Care-Aware selected when personaMode is 'chronic_care_aware'", async () => {
+    mockApiFetch.mockResolvedValueOnce({
+      data: {
+        email: "alex@example.com",
+        profile: { ...PROFILE_FIXTURE, personaMode: "chronic_care_aware" },
+      },
+    });
+    renderPage();
+    const radio = (await screen.findByRole("radio", {
+      name: /Assisted \/ Chronic-Care-Aware/i,
+    })) as HTMLInputElement;
+    expect(radio.checked).toBe(true);
+  });
+
+  it("shows an error when saving mode fails", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce({
+        data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
+      })
+      .mockRejectedValueOnce(new Error("save failed"));
+
+    renderPage();
+    await screen.findByRole("radio", { name: /Active Fitness/i });
+    act(() => {
+      fireEvent.click(screen.getByRole("radio", { name: /Active Fitness/i }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Save Dashboard Mode" }));
+    });
+
+    await screen.findByText("Could not save your Dashboard Mode. Please try again.");
+  });
 });
 
 // ── Privacy & Security ─────────────────────────────────────────────────────────
 
 describe("MyAccountPage — privacy and security", () => {
-  beforeEach(() => {
-    mockApiFetch.mockResolvedValue({
-      data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
-    });
-  });
-
   it("renders the Export My Data button", async () => {
     renderPage();
     await screen.findByRole("button", { name: "Export My Data" });
@@ -358,251 +360,4 @@ describe("MyAccountPage — null profile (not yet onboarded)", () => {
     renderPage();
     await screen.findByRole("heading", { name: "My Account", level: 1 });
   });
-function renderViaApp() {
-  return render(
-    <MemoryRouter initialEntries={["/my-account"]}>
-      <App />
-    </MemoryRouter>,
-  );
-}
-
-beforeEach(() => {
-  mockApiFetch.implementation = () =>
-    Promise.resolve({
-      data: {
-        profile: {
-          fullName: "Alex Johnson",
-          personaMode: "default",
-        },
-      },
-    });
-});
-
-// ── Route registration ────────────────────────────────────────────────────────
-
-test("/my-account route renders the My Account heading", async () => {
-  renderViaApp();
-  await waitFor(() => screen.getByRole("heading", { name: "My Account", level: 1 }));
-});
-
-// ── Page heading ──────────────────────────────────────────────────────────────
-
-test("renders My Account h1", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("heading", { name: "My Account", level: 1 }));
-});
-
-// ── Section headings ──────────────────────────────────────────────────────────
-
-test("renders Profile section heading", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("heading", { name: "Profile", level: 2 }));
-});
-
-test("renders Dashboard Mode section heading", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("heading", { name: "Dashboard Mode", level: 2 }));
-});
-
-test("renders Wellness Preferences section heading", async () => {
-  renderPage();
-  await waitFor(() =>
-    screen.getByRole("heading", { name: "Wellness Preferences", level: 2 }),
-  );
-});
-
-test("renders Privacy & Data Settings section heading", async () => {
-  renderPage();
-  await waitFor(() =>
-    screen.getByRole("heading", { name: "Privacy & Data Settings", level: 2 }),
-  );
-});
-
-test("renders Security section heading", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("heading", { name: "Security", level: 2 }));
-});
-
-// ── Dashboard mode options ────────────────────────────────────────────────────
-
-test("renders Everyday Wellness option", async () => {
-  renderPage();
-  await waitFor(() => screen.getByText("Everyday Wellness"));
-});
-
-test("renders Active Fitness option", async () => {
-  renderPage();
-  await waitFor(() => screen.getByText("Active Fitness"));
-});
-
-test("renders Assisted / Chronic-Care-Aware option", async () => {
-  renderPage();
-  await waitFor(() => screen.getByText("Assisted / Chronic-Care-Aware"));
-});
-
-test("Everyday Wellness description matches design spec", async () => {
-  renderPage();
-  await waitFor(() =>
-    screen.getByText(
-      "Balanced view across all health domains. Best for general wellness tracking and daily health monitoring.",
-    ),
-  );
-});
-
-test("Active Fitness description matches design spec", async () => {
-  renderPage();
-  await waitFor(() =>
-    screen.getByText(
-      "Emphasizes activity, workouts, recovery, and body composition. Ideal for fitness enthusiasts and athletes.",
-    ),
-  );
-});
-
-test("Assisted / Chronic-Care-Aware description matches design spec", async () => {
-  renderPage();
-  await waitFor(() =>
-    screen.getByText(
-      "Larger emphasis on critical indicators, simplified readability, and clear alerts. Designed for easier monitoring.",
-    ),
-  );
-});
-
-// ── Mode preselected from profile ────────────────────────────────────────────
-
-test("radio for loaded personaMode=default is checked", async () => {
-  mockApiFetch.implementation = () =>
-    Promise.resolve({
-      data: { profile: { fullName: "Alex Johnson", personaMode: "default" } },
-    });
-  renderPage();
-
-  await waitFor(() => {
-    const radio = screen.getByRole("radio", { name: /Everyday Wellness/i }) as HTMLInputElement;
-    expect(radio.checked).toBe(true);
-  });
-});
-
-test("radio for loaded personaMode=fitness is checked", async () => {
-  mockApiFetch.implementation = () =>
-    Promise.resolve({
-      data: { profile: { fullName: "Alex Johnson", personaMode: "fitness" } },
-    });
-  renderPage();
-
-  await waitFor(() => {
-    const radio = screen.getByRole("radio", { name: /Active Fitness/i }) as HTMLInputElement;
-    expect(radio.checked).toBe(true);
-  });
-});
-
-test("radio for loaded personaMode=chronic_care_aware is checked", async () => {
-  mockApiFetch.implementation = () =>
-    Promise.resolve({
-      data: { profile: { fullName: "Alex Johnson", personaMode: "chronic_care_aware" } },
-    });
-  renderPage();
-
-  await waitFor(() => {
-    const radio = screen.getByRole("radio", { name: /Assisted \/ Chronic-Care-Aware/i }) as HTMLInputElement;
-    expect(radio.checked).toBe(true);
-  });
-});
-
-// ── Saving mode calls PUT /profile ────────────────────────────────────────────
-
-test("selecting a mode calls PUT /profile with the new personaMode", async () => {
-  const calls: { path: string; opts: RequestInit }[] = [];
-  mockApiFetch.implementation = (path: string, opts?: RequestInit) => {
-    if (opts?.method === "PUT") {
-      calls.push({ path, opts });
-    }
-    return Promise.resolve({
-      data: { profile: { fullName: "Alex Johnson", personaMode: "default" } },
-    });
-  };
-  renderPage();
-
-  // Wait for the loaded state (radios present)
-  await waitFor(() => screen.getByRole("radio", { name: /Active Fitness/i }));
-  fireEvent.click(screen.getByRole("radio", { name: /Active Fitness/i }));
-
-  await waitFor(() => expect(calls).toHaveLength(1));
-  expect(calls[0]!.path).toBe("/profile");
-  expect(calls[0]!.opts.method).toBe("PUT");
-  const body = JSON.parse(calls[0]!.opts.body as string) as Record<string, unknown>;
-  expect(body["personaMode"]).toBe("fitness");
-});
-
-// ── Actions ───────────────────────────────────────────────────────────────────
-
-test("renders Edit Profile button", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("button", { name: "Edit Profile" }));
-});
-
-test("renders Export My Data button", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("button", { name: "Export My Data" }));
-});
-
-test("renders Delete My Account button", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("button", { name: "Delete My Account" }));
-});
-
-test("renders Change Password link", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("link", { name: "Change Password" }));
-});
-
-test("renders View Sessions link", async () => {
-  renderPage();
-  await waitFor(() => screen.getByRole("link", { name: "View Sessions" }));
-});
-
-// ── Error state ───────────────────────────────────────────────────────────────
-
-test("shows error message when profile fetch fails", async () => {
-  mockApiFetch.implementation = () => Promise.reject(new Error("Network error"));
-  renderPage();
-  await waitFor(() =>
-    screen.getByText("Could not load your profile. Please try again."),
-  );
-});
-
-test("error state includes a Retry button", async () => {
-  mockApiFetch.implementation = () => Promise.reject(new Error("Network error"));
-  renderPage();
-  await waitFor(() => screen.getByRole("button", { name: "Retry" }));
-});
-
-// ── Loading state ─────────────────────────────────────────────────────────────
-
-test("shows loading text before profile resolves", () => {
-  mockApiFetch.implementation = () => new Promise(() => {/* never resolves */});
-  renderPage();
-  screen.getByText("Loading your account…");
-});
-
-// ── PUT error shown to user ───────────────────────────────────────────────────
-
-test("shows error message when saving mode fails", async () => {
-  const calls: string[] = [];
-  mockApiFetch.implementation = (path: string, opts?: RequestInit) => {
-    if (opts?.method === "PUT") {
-      calls.push(path);
-      return Promise.reject(new Error("save failed"));
-    }
-    return Promise.resolve({
-      data: { profile: { fullName: "Alex Johnson", personaMode: "default" } },
-    });
-  };
-  renderPage();
-
-  await waitFor(() => screen.getByRole("radio", { name: /Active Fitness/i }));
-  fireEvent.click(screen.getByRole("radio", { name: /Active Fitness/i }));
-
-  await waitFor(() =>
-    screen.getByText("Could not save your Dashboard Mode. Please try again."),
-  );
 });

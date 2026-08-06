@@ -6,11 +6,13 @@ type PersonaMode = "default" | "fitness" | "elder_friendly" | "chronic_care_awar
 
 interface Profile {
   fullName: string;
+  email?: string;
+  emailVerified?: boolean;
   personaMode: PersonaMode;
 }
 
 interface ProfileResponse {
-  data: { profile: Profile | null };
+  data: { email?: string; profile: Profile | null };
 }
 
 const DASHBOARD_MODES: { value: PersonaMode; title: string; desc: string }[] = [
@@ -34,11 +36,22 @@ const DASHBOARD_MODES: { value: PersonaMode; title: string; desc: string }[] = [
 export function MyAccountPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [fullName, setFullName] = useState("Alex Johnson");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("alex@example.com");
   const [personaMode, setPersonaMode] = useState<PersonaMode>("default");
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Edit profile form state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editNameError, setEditNameError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editServerError, setEditServerError] = useState<string | null>(null);
+
+  // Dashboard mode state
+  const [pendingMode, setPendingMode] = useState<PersonaMode>("default");
+  const [modeSaving, setModeSaving] = useState(false);
+  const [modeSaveError, setModeSaveError] = useState<string | null>(null);
+  const [modeSaveSuccess, setModeSaveSuccess] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,9 +60,12 @@ export function MyAccountPage() {
         const res = await apiFetch<ProfileResponse>("/profile");
         if (cancelled) return;
         const profile = res.data.profile;
+        if (res.data.email) setEmail(res.data.email);
         if (profile) {
           setFullName(profile.fullName);
-          setPersonaMode(profile.personaMode ?? "default");
+          const mode = profile.personaMode ?? "default";
+          setPersonaMode(mode);
+          setPendingMode(mode);
         }
       } catch {
         if (!cancelled) setLoadError("Could not load your profile. Please try again.");
@@ -58,26 +74,86 @@ export function MyAccountPage() {
       }
     }
     void loadProfile();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function handleSaveMode(mode: PersonaMode) {
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
+  function openEdit() {
+    setEditName(fullName);
+    setEditNameError(null);
+    setEditServerError(null);
+    setEditOpen(true);
+  }
+
+  function closeEdit() {
+    setEditOpen(false);
+    setEditNameError(null);
+    setEditServerError(null);
+  }
+
+  async function handleEditSave(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setEditNameError(null);
+    setEditServerError(null);
+
+    const trimmed = editName.trim();
+    if (trimmed.length < 2 || trimmed.length > 120) {
+      setEditNameError("Full name must be between 2 and 120 characters.");
+      return;
+    }
+
+    setEditSaving(true);
     try {
       await apiFetch("/profile", {
         method: "PUT",
-        body: JSON.stringify({ fullName, personaMode: mode }),
+        body: JSON.stringify({ fullName: trimmed, personaMode }),
       });
-      setPersonaMode(mode);
-      setSaveSuccess(true);
-    } catch {
-      setSaveError("Could not save your Dashboard Mode. Please try again.");
+      setFullName(trimmed);
+      setEditOpen(false);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message) as {
+            error?: { details?: { path: string[]; message: string }[] };
+          };
+          const details = parsed?.error?.details ?? [];
+          const nameErr = details.find((d) => d.path[0] === "fullName");
+          if (nameErr) {
+            setEditNameError(nameErr.message);
+          } else {
+            setEditServerError("Could not save your profile. Please try again.");
+          }
+        } catch {
+          setEditServerError("Could not save your profile. Please try again.");
+        }
+      } else {
+        setEditServerError("Could not save your profile. Please try again.");
+      }
     } finally {
-      setSaving(false);
+      setEditSaving(false);
     }
   }
+
+  async function handleSaveMode() {
+    setModeSaving(true);
+    setModeSaveError(null);
+    setModeSaveSuccess(false);
+    try {
+      await apiFetch("/profile", {
+        method: "PUT",
+        body: JSON.stringify({ fullName, personaMode: pendingMode }),
+      });
+      setPersonaMode(pendingMode);
+      setModeSaveSuccess(true);
+    } catch {
+      setModeSaveError("Could not save your Dashboard Mode. Please try again.");
+    } finally {
+      setModeSaving(false);
+    }
+  }
+
+  const avatarInitial = fullName.trim().charAt(0).toUpperCase() || "A";
 
   return (
     <div className={styles.page}>
@@ -99,16 +175,63 @@ export function MyAccountPage() {
         </p>
       ) : (
         <>
+          {/* Profile section */}
           <section aria-labelledby="profile-heading" className={styles.section}>
             <h2 id="profile-heading" className={styles.sectionHeading}>Profile</h2>
             <div className={styles.profileCard}>
-              <div className={styles.profileAvatar} aria-hidden="true">A</div>
+              <div className={styles.profileAvatar} aria-hidden="true">{avatarInitial}</div>
               <div className={styles.profileInfo}>
                 <p className={styles.profileName}>{fullName}</p>
-                <p className={styles.profileEmail}>alex@example.com</p>
+                <p className={styles.profileEmail}>{email}</p>
               </div>
-              <button type="button" className={styles.editButton}>Edit Profile</button>
+              <button type="button" className={styles.editButton} onClick={openEdit}>
+                Edit Profile
+              </button>
             </div>
+
+            {editOpen && (
+              <form
+                aria-label="Edit profile form"
+                className={styles.editForm}
+                onSubmit={(e) => void handleEditSave(e)}
+                noValidate
+              >
+                <div className={styles.formField}>
+                  <label htmlFor="edit-full-name" className={styles.formLabel}>
+                    Full Name
+                  </label>
+                  <input
+                    id="edit-full-name"
+                    type="text"
+                    className={styles.formInput}
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    disabled={editSaving}
+                    autoComplete="name"
+                  />
+                  {editNameError && (
+                    <p role="alert" className={styles.fieldError}>{editNameError}</p>
+                  )}
+                  {editServerError && (
+                    <p role="alert" className={styles.fieldError}>{editServerError}</p>
+                  )}
+                </div>
+                <div className={styles.formActions}>
+                  <button type="submit" className={styles.saveButton} disabled={editSaving}>
+                    {editSaving ? "Saving…" : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cancelButton}
+                    onClick={closeEdit}
+                    disabled={editSaving}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
             <dl className={styles.profileDetails}>
               <div className={styles.profileField}>
                 <dt>Full Name</dt>
@@ -116,43 +239,38 @@ export function MyAccountPage() {
               </div>
               <div className={styles.profileField}>
                 <dt>Email Address</dt>
-                <dd>alex@example.com (verified)</dd>
+                <dd>
+                  {email} <span className={styles.verifiedBadge}>(verified)</span>
+                </dd>
               </div>
             </dl>
           </section>
 
+          {/* Dashboard Mode section */}
           <section aria-labelledby="dashboard-mode-heading" className={styles.section}>
             <h2 id="dashboard-mode-heading" className={styles.sectionHeading}>Dashboard Mode</h2>
             <p className={styles.sectionDesc}>Choose how your dashboard emphasizes health information</p>
 
-            {saveSuccess && (
-              <p role="status" className={styles.successMessage}>
-                Dashboard Mode saved.
-              </p>
+            {modeSaveSuccess && (
+              <p role="status" className={styles.successMessage}>Dashboard Mode saved.</p>
             )}
-            {saveError && (
-              <p role="alert" className={styles.errorMessage}>
-                {saveError}
-              </p>
+            {modeSaveError && (
+              <p role="alert" className={styles.errorMessage}>{modeSaveError}</p>
             )}
 
-            <div
-              className={styles.modeOptions}
-              role="radiogroup"
-              aria-label="Dashboard Mode"
-            >
+            <div className={styles.modeOptions} role="radiogroup" aria-label="Dashboard Mode">
               {DASHBOARD_MODES.map((mode) => (
                 <label
                   key={mode.value}
-                  className={`${styles.modeOption} ${personaMode === mode.value ? styles.modeOptionSelected : ""}`}
+                  className={`${styles.modeOption} ${pendingMode === mode.value ? styles.modeOptionSelected : ""}`}
                 >
                   <input
                     type="radio"
                     name="dashboardMode"
                     value={mode.value}
-                    checked={personaMode === mode.value}
-                    disabled={saving}
-                    onChange={() => void handleSaveMode(mode.value)}
+                    checked={pendingMode === mode.value}
+                    disabled={modeSaving}
+                    onChange={() => setPendingMode(mode.value)}
                   />
                   <div>
                     <span className={styles.modeOptionTitle}>{mode.title}</span>
@@ -164,27 +282,15 @@ export function MyAccountPage() {
 
             <button
               type="button"
-              className={styles.saveButton}
-              onClick={handlePersonaSave}
-              disabled={personaSaving}
+              className={styles.primaryButton}
+              onClick={() => void handleSaveMode()}
+              disabled={modeSaving}
             >
-              {personaSaving ? "Saving…" : "Save Dashboard Mode"}
+              {modeSaving ? "Saving…" : "Save Dashboard Mode"}
             </button>
           </section>
 
-          {/* ── Wellness Preferences section ── */}
-          <section aria-labelledby="wellness-prefs-heading" className={styles.section}>
-            <h2 id="wellness-prefs-heading" className={styles.sectionTitle}>Wellness Preferences</h2>
-            <div className={styles.prefsList}>
-              <div className={styles.prefItem}>
-                <span className={styles.prefLabel}>Goal Preferences</span>
-                <span className={styles.prefDesc}>Daily step goals, weekly activity targets</span>
-              </div>
-              <div className={styles.prefItem}>
-                <span className={styles.prefLabel}>Notification Preferences</span>
-                <span className={styles.prefDesc}>Email alerts for stale data and goal milestones</span>
-          </section>
-
+          {/* Wellness Preferences section */}
           <section aria-labelledby="wellness-prefs-heading" className={styles.section}>
             <h2 id="wellness-prefs-heading" className={styles.sectionHeading}>Wellness Preferences</h2>
             <div className={styles.prefRow}>
@@ -201,61 +307,13 @@ export function MyAccountPage() {
             </div>
           </section>
 
-          {/* ── Privacy & Data section ── */}
-          <section aria-labelledby="privacy-section-heading" className={styles.section}>
-            <h2 id="privacy-section-heading" className={styles.sectionTitle}>
-              Privacy &amp; Data Settings
-            </h2>
-            <p className={styles.privacyNote}>
-              You own your health data. You can export or delete it anytime.
-            </p>
-            <p className={styles.sectionDesc}>
-              Your wellness data is encrypted, secure, and never sold to third parties. We are
-              committed to protecting your privacy and giving you full control over your
-              information.
-            </p>
-            <div className={styles.privacyActions}>
-              <button type="button" className={styles.secondaryButton}>
-                Export My Data
-              </button>
-              <button type="button" className={styles.dangerButton}>
-                Delete My Account
-              </button>
-            </div>
-          </section>
-
-          {/* ── Security section ── */}
-          <section aria-labelledby="security-section-heading" className={styles.section}>
-            <h2 id="security-section-heading" className={styles.sectionTitle}>Security</h2>
-            <dl className={styles.securityList}>
-              <div className={styles.securityItem}>
-                <dt>Password</dt>
-                <dd>
-                  <a
-                    href="#change-password-noop"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    Change Password
-                  </a>
-                </dd>
-              </div>
-              <div className={styles.securityItem}>
-                <dt>Active Sessions</dt>
-                <dd>
-                  <a
-                    href="#view-sessions-noop"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    View Sessions
-                  </a>
-                </dd>
-              </div>
-            </dl>
+          {/* Privacy & Data Settings section */}
           <section aria-labelledby="privacy-heading" className={styles.section}>
             <h2 id="privacy-heading" className={styles.sectionHeading}>Privacy &amp; Data Settings</h2>
             <p className={styles.sectionDesc}>You own your health data. You can export or delete it anytime.</p>
             <p className={styles.privacyText}>
-              Your wellness data is encrypted, secure, and never sold to third parties. We are committed to protecting your privacy and giving you full control over your information.
+              Your wellness data is encrypted, secure, and never sold to third parties. We are
+              committed to protecting your privacy and giving you full control over your information.
             </p>
             <div className={styles.buttonRow}>
               <button type="button" className={styles.secondaryButton}>Export My Data</button>
@@ -263,15 +321,28 @@ export function MyAccountPage() {
             </div>
           </section>
 
+          {/* Security section */}
           <section aria-labelledby="security-heading" className={styles.section}>
             <h2 id="security-heading" className={styles.sectionHeading}>Security</h2>
             <div className={styles.securityRow}>
               <span>Password</span>
-              <a href="/change-password" className={styles.securityLink}>Change Password</a>
+              <a
+                href="#change-password-noop"
+                className={styles.securityLink}
+                onClick={(e) => e.preventDefault()}
+              >
+                Change Password
+              </a>
             </div>
             <div className={styles.securityRow}>
               <span>Active Sessions</span>
-              <a href="/sessions" className={styles.securityLink}>View Sessions</a>
+              <a
+                href="#view-sessions-noop"
+                className={styles.securityLink}
+                onClick={(e) => e.preventDefault()}
+              >
+                View Sessions
+              </a>
             </div>
           </section>
         </>
