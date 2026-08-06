@@ -9,12 +9,17 @@ const PERSONA_MODES = ['default', 'fitness', 'elder_friendly', 'chronic_care_awa
 type PersonaMode = typeof PERSONA_MODES[number];
 
 const profileSchema = z.object({
-  fullName: z.string().min(1).max(120),
+  fullName: z.string().min(2).max(120),
   dateOfBirth: z.string().date().nullable().optional(),
   gender: z.string().max(64).nullable().optional(),
   personaMode: z.enum(PERSONA_MODES).optional(),
-  wellnessPreferences: z
-    .array(z.string())
+  wellnessPreferences: z.array(z.string()).optional(),
+  privacy: z
+    .object({
+      policyAccepted: z.boolean(),
+      dataExportRequested: z.boolean(),
+      dataDeletionRequested: z.boolean(),
+    })
     .optional(),
 });
 
@@ -53,6 +58,10 @@ profileRouter.put(
     const now = new Date().toISOString();
     const personaMode: PersonaMode = input.personaMode ?? 'default';
 
+    const privacyPolicyAccepted = input.privacy?.policyAccepted === true ? 1 : 0;
+    const dataExportRequested = input.privacy?.dataExportRequested === true ? 1 : 0;
+    const dataDeletionRequested = input.privacy?.dataDeletionRequested === true ? 1 : 0;
+
     try {
       const db = getDatabase();
 
@@ -71,6 +80,9 @@ profileRouter.put(
                   gender = ?,
                   persona_mode = ?,
                   wellness_preferences = ?,
+                  privacy_policy_accepted = ?,
+                  data_export_requested = ?,
+                  data_deletion_requested = ?,
                   updated_at = ?
             WHERE user_id = ?`,
         ).run(
@@ -79,6 +91,9 @@ profileRouter.put(
           input.gender ?? null,
           personaMode,
           JSON.stringify(wellnessPrefs),
+          privacyPolicyAccepted,
+          dataExportRequested,
+          dataDeletionRequested,
           now,
           userId,
         );
@@ -90,7 +105,7 @@ profileRouter.put(
               privacy_policy_accepted, data_export_requested, data_deletion_requested,
               created_at, updated_at)
            VALUES
-             (?, ?, ?, ?, ?, ?, ?, '[]', NULL, 0, 0, 0, ?, ?)`,
+             (?, ?, ?, ?, ?, ?, ?, '[]', NULL, ?, ?, ?, ?, ?)`,
         ).run(
           profileId,
           userId,
@@ -99,6 +114,9 @@ profileRouter.put(
           input.dateOfBirth ?? null,
           input.gender ?? null,
           JSON.stringify(wellnessPrefs),
+          privacyPolicyAccepted,
+          dataExportRequested,
+          dataDeletionRequested,
           now,
           now,
         );
@@ -107,7 +125,8 @@ profileRouter.put(
       const row = db
         .prepare(
           `SELECT id, user_id, full_name, date_of_birth, gender, wellness_preferences,
-                  persona_mode, created_at, updated_at
+                  persona_mode, privacy_policy_accepted, data_export_requested,
+                  data_deletion_requested, created_at, updated_at
              FROM profiles WHERE user_id = ?`,
         )
         .get(userId) as {
@@ -118,6 +137,9 @@ profileRouter.put(
         gender: string | null;
         wellness_preferences: string;
         persona_mode: string;
+        privacy_policy_accepted: number;
+        data_export_requested: number;
+        data_deletion_requested: number;
         created_at: string;
         updated_at: string;
       };
@@ -140,6 +162,11 @@ profileRouter.put(
             gender: row.gender,
             wellnessPreferences: JSON.parse(row.wellness_preferences) as string[],
             personaMode: row.persona_mode,
+            privacy: {
+              policyAccepted: row.privacy_policy_accepted === 1,
+              dataExportRequested: row.data_export_requested === 1,
+              dataDeletionRequested: row.data_deletion_requested === 1,
+            },
             createdAt: row.created_at,
             updatedAt: row.updated_at,
           },
