@@ -326,53 +326,6 @@
   margin: 0;
 }
 
-/* ── Footer ─────────────────────────────────────────────────────── */
-.footer {
-  background-color: var(--color-gray-800);
-  color: var(--color-gray-200);
-  padding: var(--space-12) var(--space-9) var(--space-9);
-}
-
-.footerContent {
-  max-width: 75rem;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-9);
-}
-
-.footerLogo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  font-size: var(--font-size-24);
-  font-weight: 700;
-  color: var(--color-gray-200);
-  text-decoration: none;
-}
-
-.footerLinks {
-  display: flex;
-  gap: var(--space-10);
-}
-
-.footerLink {
-  color: var(--color-gray-200);
-  text-decoration: none;
-  font-size: var(--font-size-14);
-}
-
-.footerLink:hover {
-  color: var(--color-teal-500);
-}
-
-.footerLink:focus-visible {
-  outline: var(--radius-1) solid var(--color-teal-500);
-  outline-offset: 2px;
-}
-
 /* ── Reduced motion ─────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .domainCard {
@@ -411,15 +364,6 @@
     grid-template-columns: 1fr;
   }
 
-  .footerContent {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .footerLinks {
-    flex-direction: column;
-    gap: var(--space-7);
-  }
 }
 
 /* ── Responsive: mobile (≤480px) ────────────────────────────────── */
@@ -440,9 +384,5 @@
   .statisticsSection,
   .trustSection {
     padding: var(--space-14) var(--space-7);
-  }
-
-  .footer {
-    padding: var(--space-12) var(--space-7) var(--space-9);
   }
 }
