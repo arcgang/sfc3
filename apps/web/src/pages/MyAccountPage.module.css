@@ -1,18 +1,20 @@
 .page {
   max-width: 48rem;
+  background-color: var(--color-gray-50);
+  min-height: 100vh;
 }
 
 .pageTitle {
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: var(--font-size-28);
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0 0 0.25rem;
+  color: var(--color-gray-800);
+  margin: 0 0 var(--space-3);
 }
 
 .pageSubtitle {
-  color: var(--color-text-secondary);
-  font-size: 0.9375rem;
-  margin: 0 0 2rem;
+  color: var(--color-gray-500);
+  font-size: var(--font-size-15);
+  margin: 0 0 var(--space-10);
 }
 
 .loadingState,
