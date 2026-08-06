@@ -1,0 +1,74 @@
+/* ── Global footer ────────────────────────────────────────────────
+   Uses design tokens only; no raw hex/px literals.
+   ─────────────────────────────────────────────────────────────── */
+
+.footer {
+  background-color: var(--color-gray-800);
+  color: var(--color-gray-200);
+  padding: var(--space-12) var(--space-9) var(--space-9);
+}
+
+.footerContent {
+  max-width: 75rem;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-9);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  font-size: var(--font-size-24);
+  font-weight: 700;
+  color: var(--color-gray-200);
+}
+
+.logoIcon {
+  width: var(--space-11);
+  height: var(--space-11);
+  background: var(--gradient-teal-diagonal);
+  border-radius: var(--radius-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white);
+  font-weight: 700;
+  font-size: var(--font-size-20);
+  flex-shrink: 0;
+}
+
+.footerLinks {
+  display: flex;
+  gap: var(--space-10);
+}
+
+.footerLink {
+  color: var(--color-gray-200);
+  text-decoration: none;
+  font-size: var(--font-size-14);
+}
+
+.footerLink:hover {
+  color: var(--color-teal-500);
+}
+
+.footerLink:focus-visible {
+  outline: 3px solid var(--color-teal-500);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .footerContent {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footerLinks {
+    flex-direction: column;
+    gap: var(--space-7);
+  }
+}

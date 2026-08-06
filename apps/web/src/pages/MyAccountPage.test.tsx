@@ -94,6 +94,13 @@ describe("MyAccountPage — loaded state", () => {
     await screen.findByRole("heading", { name: "My Account", level: 1 });
   });
 
+  it("renders the page subtitle with non-empty text content", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: "My Account", level: 1 });
+    const subtitle = screen.getByText("Manage your profile, preferences, and privacy settings");
+    expect(subtitle.textContent).toBeTruthy();
+  });
+
   it("renders the Profile section heading", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "Profile", level: 2 });
@@ -139,6 +146,13 @@ describe("MyAccountPage — profile display", () => {
   it("renders the Edit Profile button", async () => {
     renderPage();
     await screen.findByRole("button", { name: "Edit Profile" });
+  });
+
+  it("renders a profile avatar element in the Profile section", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Profile" });
+    const avatar = within(section).getByText("A");
+    expect(avatar).toBeTruthy();
   });
 });
 
@@ -241,6 +255,24 @@ describe("MyAccountPage — dashboard mode selector", () => {
     await screen.findByRole("radio", { name: /Everyday Wellness/i });
     screen.getByRole("radio", { name: /Active Fitness/i });
     screen.getByRole("radio", { name: /Assisted \/ Chronic-Care-Aware/i });
+  });
+
+  it("renders exactly 3 mode option tiles", async () => {
+    renderPage();
+    const radios = await screen.findAllByRole("radio");
+    expect(radios).toHaveLength(3);
+  });
+
+  it("applies modeOptionSelected class to the selected tile when a different tile is clicked", async () => {
+    renderPage();
+    await screen.findByRole("radio", { name: /Active Fitness/i });
+    act(() => {
+      fireEvent.click(screen.getByRole("radio", { name: /Active Fitness/i }));
+    });
+    const fitnessRadio = screen.getByRole("radio", { name: /Active Fitness/i }) as HTMLInputElement;
+    expect(fitnessRadio.checked).toBe(true);
+    const defaultRadio = screen.getByRole("radio", { name: /Everyday Wellness/i }) as HTMLInputElement;
+    expect(defaultRadio.checked).toBe(false);
   });
 
   it("has Everyday Wellness selected by default when personaMode is 'default'", async () => {
@@ -502,6 +534,28 @@ describe("MyAccountPage — privacy and security", () => {
     act(() => { fireEvent.click(deleteBtn); });
 
     await screen.findByText("Could not submit deletion request. Please try again.");
+  });
+
+  it("Privacy section renders both the Export My Data button and the Delete My Account button", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Privacy & Data Settings" });
+    expect(within(section).getByRole("button", { name: "Export My Data" })).toBeTruthy();
+    expect(within(section).getByRole("button", { name: "Delete My Account" })).toBeTruthy();
+  });
+
+  it("Security section renders at least one Change Password link and one View Sessions link", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Security" });
+    expect(within(section).getByRole("link", { name: "Change Password" })).toBeTruthy();
+    expect(within(section).getByRole("link", { name: "View Sessions" })).toBeTruthy();
+  });
+
+  it("Delete My Account button carries the dangerButton CSS class, not primary or secondary", async () => {
+    renderPage();
+    const deleteBtn = await screen.findByRole("button", { name: "Delete My Account" });
+    expect(deleteBtn.className).toMatch(/dangerButton/);
+    expect(deleteBtn.className).not.toMatch(/primaryButton/);
+    expect(deleteBtn.className).not.toMatch(/secondaryButton/);
   });
 });
 

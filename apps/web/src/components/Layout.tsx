@@ -10,8 +10,8 @@ export function Layout() {
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <span aria-hidden="true">W</span>
-          <strong>WellnessHub</strong>
+          <div className={styles.brandIcon} aria-hidden="true">W</div>
+          <span className={styles.brandName}>WellnessHub</span>
         </div>
         <nav aria-label="Sidebar navigation" className={styles.nav}>
           <NavLink to="/dashboard" className={({ isActive }) => isActive ? styles.navLinkActive : styles.navLink}>
@@ -25,9 +25,13 @@ export function Layout() {
           </NavLink>
         </nav>
         <div className={styles.userBlock}>
-          <span aria-hidden="true" className={styles.userAvatar}>A</span>
-          <span className={styles.userName}>Alex Johnson</span>
-          <span className={styles.userEmail}>alex@example.com</span>
+          <div className={styles.userProfile}>
+            <div className={styles.userAvatar} aria-hidden="true">A</div>
+            <div className={styles.userInfo}>
+              <div className={styles.userName}>Alex Johnson</div>
+              <div className={styles.userEmail}>alex@example.com</div>
+            </div>
+          </div>
           <a
             href="/login"
             className={styles.logoutLink}

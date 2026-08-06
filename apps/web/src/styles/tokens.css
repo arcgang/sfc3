@@ -170,6 +170,8 @@
   --space-14:  80px;
   --space-sidebar: 200px;
   --space-sidebar-wide: 240px;
+  --size-logo-icon: 36px;
+  --size-avatar-sm: 40px;
 
   /* Legacy rem-scale aliases (kept for existing components) */
   --space-xs: 0.5rem;

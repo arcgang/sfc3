@@ -1,55 +1,64 @@
+/* ── Goals & Progress page ─────────────────────────────────────────────────── */
+
 .page {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  max-width: 900px;
+  gap: var(--space-10);
+  padding: var(--space-10);
 }
+
+/* ── Page header ─────────────────────────────────────────────────────────── */
 
 .pageHeader {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-10);
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: var(--space-7);
 }
 
 .pageHeader h1 {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: var(--font-size-28);
   font-weight: 700;
   color: var(--color-text-primary);
 }
 
 .createButton {
-  padding: 0.5rem 1.25rem;
-  background-color: var(--color-accent);
-  color: #ffffff;
+  padding: var(--space-5) var(--space-9);
+  background-color: var(--color-teal-500);
+  color: var(--color-white);
   border: none;
-  border-radius: 0.375rem;
-  font-size: 0.9375rem;
+  border-radius: var(--radius-5);
+  font-size: var(--font-size-14);
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .createButton:hover {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-teal-600);
 }
 
 .createButton:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
+
+/* ── Create Goal form ────────────────────────────────────────────────────── */
 
 .formSection {
   background-color: var(--color-bg-white);
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
+  border-radius: var(--radius-6);
+  padding: var(--space-9);
+  box-shadow: var(--shadow-xs);
 }
 
 .formSection h2 {
-  margin: 0 0 1rem;
-  font-size: 1.125rem;
+  margin: 0 0 var(--space-7);
+  font-size: var(--font-size-18);
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -57,27 +66,27 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-7);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: var(--space-2);
 }
 
 .field label {
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
   font-weight: 500;
   color: var(--color-text-primary);
 }
 
 .field input,
 .field select {
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-3) var(--space-5);
   border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  font-size: 0.9375rem;
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-15);
   color: var(--color-text-primary);
   background-color: var(--color-bg-white);
   max-width: 20rem;
@@ -85,39 +94,40 @@
 
 .field input:focus,
 .field select:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .fieldError {
-  font-size: 0.8125rem;
+  font-size: var(--font-size-13);
   color: var(--color-danger);
 }
 
 .formError {
-  margin: 0 0 0.75rem;
-  padding: 0.75rem;
+  margin: 0 0 var(--space-5);
+  padding: var(--space-5);
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-14);
 }
 
 .formActions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-5);
   flex-wrap: wrap;
 }
 
 .submitButton {
-  padding: 0.5rem 1.25rem;
-  background-color: var(--color-accent);
-  color: #ffffff;
+  padding: var(--space-3) var(--space-9);
+  background-color: var(--color-teal-500);
+  color: var(--color-white);
   border: none;
-  border-radius: 0.375rem;
-  font-size: 0.9375rem;
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-15);
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .submitButton:disabled {
@@ -126,22 +136,23 @@
 }
 
 .submitButton:not(:disabled):hover {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-teal-600);
 }
 
 .submitButton:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .cancelButton {
-  padding: 0.5rem 1.25rem;
+  padding: var(--space-3) var(--space-9);
   background-color: transparent;
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  font-size: 0.9375rem;
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-15);
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .cancelButton:hover {
@@ -149,66 +160,75 @@
 }
 
 .cancelButton:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
 
+/* ── Async states ────────────────────────────────────────────────────────── */
+
 .loadingState {
-  padding: 2rem;
+  padding: var(--space-11);
   text-align: center;
-  color: #6b7280;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-14);
 }
 
 .errorState {
-  padding: 0.75rem;
+  padding: var(--space-5);
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-14);
 }
 
 .retryButton {
-  margin-left: 0.5rem;
+  margin-left: var(--space-3);
   background: none;
   border: none;
-  color: var(--color-accent);
+  color: var(--color-teal-500);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
   padding: 0;
   text-decoration: underline;
 }
 
 .retryButton:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .emptyState {
-  padding: 2rem;
+  padding: var(--space-11);
   text-align: center;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   background-color: var(--color-bg-white);
   border: 1px dashed var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-6);
+  font-size: var(--font-size-14);
 }
+
+/* ── Goals grid ──────────────────────────────────────────────────────────── */
 
 .goalsList {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-8);
 }
+
+/* ── Goal card ───────────────────────────────────────────────────────────── */
 
 .goalCard {
   background-color: var(--color-bg-white);
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  padding: 1.25rem;
+  border-radius: var(--radius-6);
+  padding: var(--space-9);
+  box-shadow: var(--shadow-xs);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-3);
 }
 
 .goalCardMuted {
@@ -217,209 +237,287 @@
 
 .goalHeader {
   display: flex;
+  justify-content: space-between;
   align-items: flex-start;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  margin-bottom: var(--space-7);
 }
 
 .goalIcon {
-  font-size: 1.5rem;
-  line-height: 1;
-  flex-shrink: 0;
-  margin-top: 0.125rem;
-}
-
-.goalHeaderText {
+  width: 48px;
+  height: 48px;
+  background: var(--gradient-teal-diagonal);
+  border-radius: var(--radius-6);
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-24);
+  color: var(--color-white);
+  flex-shrink: 0;
+  line-height: 1;
 }
 
-.goalHeaderText h3 {
-  margin: 0;
-  font-size: 1rem;
+.goalName {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-18);
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
+/* ── Status badges ───────────────────────────────────────────────────────── */
+
 .statusBadge {
   display: inline-block;
-  padding: 0.125rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-6);
+  font-size: var(--font-size-12);
   font-weight: 600;
 }
 
 .badgeActive {
-  background-color: var(--color-success-bg);
-  color: var(--color-success);
+  background-color: var(--color-green-100);
+  color: var(--color-green-800);
 }
 
 .badgeAtRisk {
-  background-color: var(--color-warning-bg);
-  color: var(--color-warning);
+  background-color: var(--color-amber-100);
+  color: var(--color-amber-800);
 }
 
 .badgeMissed {
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
+  background-color: var(--color-red-100);
+  color: var(--color-red-800);
 }
 
 .badgeCompleted {
-  background-color: #eff6ff;
-  color: #1d4ed8;
+  background-color: var(--color-blue-50);
+  color: var(--color-blue-800);
 }
 
 .badgeArchived {
-  background-color: #f3f4f6;
-  color: #6b7280;
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
+
+/* ── Goal body ───────────────────────────────────────────────────────────── */
 
 .goalMeta {
   margin: 0;
-  font-size: 0.8125rem;
-  color: #6b7280;
+  font-size: var(--font-size-14);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-7);
 }
 
 .goalTarget {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
   color: var(--color-text-primary);
 }
 
+/* ── Progress area ───────────────────────────────────────────────────────── */
+
 .goalProgress {
-  margin: 0;
-  font-size: 0.875rem;
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-14);
+  font-weight: 600;
   color: var(--color-text-primary);
-  font-weight: 500;
 }
 
 .progressBarTrack {
   width: 100%;
-  height: 0.5rem;
+  height: 10px;
   background-color: var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-3);
   overflow: hidden;
 }
 
 .progressBarFill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-3);
   transition: width 0.3s ease;
 }
 
 .progressFillOnTrack {
-  background-color: var(--color-success);
+  background: var(--gradient-teal-bar);
 }
 
 .progressFillAtRisk {
-  background-color: var(--color-warning);
+  background: var(--gradient-amber-bar);
 }
 
 .progressFillMissed {
-  background-color: var(--color-danger);
+  background: var(--gradient-red-bar);
 }
+
+/* ── Week-over-week trend ────────────────────────────────────────────────── */
 
 .weekOverWeek {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: #6b7280;
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-13);
+  color: var(--color-text-secondary);
 }
 
+/* ── Completed / archived section ────────────────────────────────────────── */
+
 .completedSection {
-  margin-top: 1.5rem;
+  margin-top: var(--space-9);
 }
 
 .completedHeading {
-  margin: 0 0 1rem;
-  font-size: 1rem;
+  margin: 0 0 var(--space-7);
+  font-size: var(--font-size-16);
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
+/* ── Goal Insights section ───────────────────────────────────────────────── */
+
 .insightsSection {
+  background-color: var(--color-bg-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  padding: var(--space-9);
+  box-shadow: var(--shadow-xs);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-7);
 }
 
 .insightsSection h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
+  margin: 0 0 var(--space-5);
+  font-size: var(--font-size-20);
+  font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .insightCard {
   display: flex;
-  gap: 0.75rem;
-  background-color: var(--color-bg-white);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  padding: 1rem;
+  gap: var(--space-5);
+  background-color: var(--color-bg-page);
+  border-radius: var(--radius-5);
+  padding: var(--space-7);
+}
+
+.insightCard span[aria-hidden] {
+  font-size: var(--font-size-20);
+  flex-shrink: 0;
 }
 
 .insightCard strong {
   display: block;
-  margin-bottom: 0.25rem;
-  font-size: 0.9375rem;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-15);
+  font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .insightCard p {
   margin: 0;
-  font-size: 0.875rem;
-  color: #4b5563;
+  font-size: var(--font-size-14);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
+/* ── Coming Soon promo block ─────────────────────────────────────────────── */
+
 .comingSoonSection {
-  margin-top: 0.5rem;
-  padding: 1.25rem;
-  background-color: var(--color-bg-white);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  text-align: center;
+  background: var(--gradient-coral);
+  color: var(--color-white);
+  border-radius: var(--radius-6);
+  padding: var(--space-9);
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-7);
 }
 
 .comingSoonHeading {
-  margin: 0;
-  font-size: 1rem;
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-20);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-white);
 }
 
 .comingSoonSubtitle {
   margin: 0;
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: var(--font-size-14);
+  color: var(--color-white);
+  opacity: 0.9;
 }
 
 .comingSoonBadge {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background-color: #f3f4f6;
-  color: #6b7280;
-  font-size: 0.8125rem;
+  padding: var(--space-3) var(--space-7);
+  background-color: var(--color-white);
+  color: var(--color-red-coral);
+  font-size: var(--font-size-13);
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: var(--radius-8);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-@media (max-width: 640px) {
-  .page {
-    padding: 0;
+/* ── Responsive layout ───────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .goalsList {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
 }
+
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-8);
+    gap: var(--space-8);
+  }
+
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-7);
+  }
+
+  .createButton {
+    width: 100%;
+  }
+
+  .goalsList {
+    grid-template-columns: 1fr;
+  }
+
+  .comingSoonSection {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: var(--space-7);
+    gap: var(--space-7);
+  }
+
+  .pageHeader h1 {
+    font-size: var(--font-size-24);
+  }
+
+  .goalCard {
+    padding: var(--space-7);
+  }
+
+  .insightsSection {
+    padding: var(--space-7);
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .createButton,
   .submitButton,
-  .cancelButton {
+  .cancelButton,
+  .progressBarFill {
     transition: none;
   }
 }

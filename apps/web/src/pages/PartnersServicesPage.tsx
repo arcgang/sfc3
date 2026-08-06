@@ -92,54 +92,115 @@ const CATEGORIES = ["All", "Fitness", "Nutrition", "Mental Health", "Sleep"] as 
 export function PartnersServicesPage() {
   return (
     <div className={styles.page}>
-      <aside>
-        <nav aria-label="Sidebar navigation">
-          <Link to="/dashboard">📊 Dashboard</Link>
-          <Link to="/my-account">👤 My Account</Link>
-          <Link to="/partners-services">🤝 Partners & Services</Link>
-          <span>Alex Johnson</span>
-          <span>alex@example.com</span>
-          <Link to="/logout">Log out</Link>
-        </nav>
-      </aside>
-      <main>
-        <h1>Explore Wellness Partners &amp; Services</h1>
-        <p>Discover services and programs to enhance your wellness journey</p>
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <span className={styles.logo}>
+            <span className={styles.logoIcon} aria-hidden="true">W</span>
+            <span className={styles.logoText}>WellnessHub</span>
+          </span>
+        </div>
 
-        <section aria-labelledby="premium-banner-heading">
-          <h2 id="premium-banner-heading">Unlock more services with Premium</h2>
-          <p>Get access to exclusive wellness programs, personalized coaching, and partner services</p>
-          <button type="button">Upgrade to Premium</button>
+        <nav className={styles.sidebarNav} aria-label="Sidebar navigation">
+          <Link to="/dashboard" className={styles.navItem}>
+            <span className={styles.navIcon}>📊</span>
+            <span>Dashboard</span>
+          </Link>
+          <Link to="/my-account" className={styles.navItem}>
+            <span className={styles.navIcon}>👤</span>
+            <span>My Account</span>
+          </Link>
+          <Link
+            to="/partners-services"
+            className={`${styles.navItem} ${styles.navItemActive}`}
+          >
+            <span className={styles.navIcon}>🤝</span>
+            <span>Partners &amp; Services</span>
+          </Link>
+        </nav>
+
+        <div className={styles.sidebarFooter}>
+          <div className={styles.userProfile}>
+            <div className={styles.userAvatar} aria-hidden="true">A</div>
+            <div className={styles.userInfo}>
+              <div className={styles.userName}>Alex Johnson</div>
+              <div className={styles.userEmail}>alex@example.com</div>
+            </div>
+          </div>
+          <Link to="/logout" className={styles.logoutLink}>Log out</Link>
+        </div>
+      </aside>
+
+      <main className={styles.main}>
+        <div className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>Explore Wellness Partners &amp; Services</h1>
+          <p className={styles.pageSubtitle}>Discover services and programs to enhance your wellness journey</p>
+        </div>
+
+        <section aria-labelledby="premium-banner-heading" className={styles.premiumBanner}>
+          <div className={styles.premiumContent}>
+            <h2 id="premium-banner-heading" className={styles.premiumBannerHeading}>
+              Unlock more services with Premium
+            </h2>
+            <p className={styles.premiumBannerText}>
+              Get access to exclusive wellness programs, personalized coaching, and partner services
+            </p>
+          </div>
+          <button type="button" className={styles.btnPremium}>Upgrade to Premium</button>
         </section>
 
-        <fieldset>
-          <legend>Category filters</legend>
-          {CATEGORIES.map((cat) => (
-            <button key={cat} type="button">
-              {cat}
-            </button>
-          ))}
+        <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+          <legend className="sr-only">Category filters</legend>
+          <ul className={styles.categoryFilters}>
+            {CATEGORIES.map((cat, i) => (
+              <li key={cat} style={{ listStyle: "none" }}>
+                <button
+                  type="button"
+                  className={
+                    i === 0
+                      ? `${styles.categoryTab} ${styles.categoryTabActive}`
+                      : styles.categoryTab
+                  }
+                >
+                  {cat}
+                </button>
+              </li>
+            ))}
+          </ul>
         </fieldset>
 
         <section aria-labelledby="services-list-heading">
           <h2 id="services-list-heading" className="sr-only">Available Services</h2>
-          <ul>
+          <ul className={styles.serviceGrid}>
             {SERVICES.map((service) => (
-              <li key={service.id}>
-                <span aria-hidden="true">{service.emoji}</span>
-                <h3>{service.name}</h3>
-                <span>{service.category}</span>
-                {service.premiumRequired && <span>Premium</span>}
-                <p>{service.description}</p>
-                <a href="#learn-more-noop" onClick={(e) => e.preventDefault()}>Learn More</a>
+              <li key={service.id} className={styles.serviceCard}>
+                {service.premiumRequired && (
+                  <span className={styles.premiumBadge}>Premium</span>
+                )}
+                <div className={styles.serviceIcon} aria-hidden="true">
+                  {service.emoji}
+                </div>
+                <h3 className={styles.serviceName}>{service.name}</h3>
+                <p className={styles.serviceDescription}>{service.description}</p>
+                <div className={styles.serviceFooter}>
+                  <span className={styles.serviceCategory}>{service.category}</span>
+                  <a
+                    href="#learn-more-noop"
+                    className={styles.btnLearnMore}
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Learn More
+                  </a>
+                </div>
               </li>
             ))}
           </ul>
         </section>
 
-        <section aria-labelledby="coming-soon-heading">
-          <h2 id="coming-soon-heading">Service Booking Coming Soon</h2>
-          <p>
+        <section aria-labelledby="coming-soon-heading" className={styles.comingSoon}>
+          <h2 id="coming-soon-heading" className={styles.comingSoonHeading}>
+            Service Booking Coming Soon
+          </h2>
+          <p className={styles.comingSoonText}>
             {"We're working on making it easy to book and schedule wellness services directly through WellnessHub. Stay tuned!"}
           </p>
         </section>

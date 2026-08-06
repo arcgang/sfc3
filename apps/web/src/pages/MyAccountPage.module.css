@@ -1,18 +1,20 @@
 .page {
   max-width: 48rem;
+  background-color: var(--color-gray-50);
+  min-height: 100vh;
 }
 
 .pageTitle {
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: var(--font-size-28);
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0 0 0.25rem;
+  color: var(--color-gray-800);
+  margin: 0 0 var(--space-3);
 }
 
 .pageSubtitle {
-  color: var(--color-text-secondary);
-  font-size: 0.9375rem;
-  margin: 0 0 2rem;
+  color: var(--color-gray-500);
+  font-size: var(--font-size-15);
+  margin: 0 0 var(--space-10);
 }
 
 .loadingState,
@@ -43,43 +45,44 @@
 .section {
   background-color: var(--color-bg-white);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  border-radius: var(--radius-6);
+  padding: var(--space-9);
+  margin-bottom: var(--space-9);
+  box-shadow: var(--shadow-xs);
 }
 
 .sectionHeading {
-  font-size: 1.125rem;
+  font-size: var(--font-size-18);
   font-weight: 700;
   color: var(--color-text-primary);
   margin: 0 0 0.75rem;
 }
 
 .sectionDesc {
-  font-size: 0.9375rem;
+  font-size: var(--font-size-14);
   color: var(--color-text-secondary);
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-8);
 }
 
 /* Profile section */
 .profileCard {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  gap: var(--space-8);
+  margin-bottom: var(--space-9);
 }
 
 .profileAvatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background-color: var(--color-accent);
-  color: #ffffff;
+  background: var(--gradient-teal-diagonal);
+  color: var(--color-white);
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: var(--font-size-32);
   flex-shrink: 0;
 }
 
@@ -88,31 +91,31 @@
 }
 
 .profileName {
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 700;
+  font-size: var(--font-size-20);
   color: var(--color-text-primary);
-  margin: 0;
+  margin: 0 0 var(--space-1);
 }
 
 .profileEmail {
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
 .editButton {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  background-color: var(--color-bg-white);
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
-  font-weight: 500;
+  padding: var(--space-4) var(--space-8);
+  border: none;
+  border-radius: var(--radius-5);
+  background: var(--gradient-teal-horizontal);
+  color: var(--color-white);
+  font-size: var(--font-size-14);
+  font-weight: 600;
   cursor: pointer;
 }
 
 .editButton:hover {
-  background-color: var(--color-bg-light);
+  filter: brightness(0.92);
 }
 
 .editButton:focus-visible {
@@ -147,90 +150,89 @@
 .modeOptions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
 }
 
 .modeOption {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  border: 2px solid var(--color-border);
-  border-radius: 0.375rem;
+  gap: var(--space-7);
+  padding: var(--space-7);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-5);
   cursor: pointer;
   background-color: var(--color-bg-white);
 }
 
 .modeOption:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-teal-500);
 }
 
 .modeOptionSelected {
-  border-color: var(--color-accent);
-  background-color: #f0f0ff;
+  border-color: var(--color-teal-500);
+  background: var(--gradient-teal-light);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .modeOption input[type="radio"] {
   margin-top: 0.2rem;
   flex-shrink: 0;
   cursor: pointer;
+  accent-color: var(--color-teal-500);
 }
 
 .modeOption input[type="radio"]:focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid var(--color-teal-500);
   outline-offset: 2px;
 }
 
 .modeOptionTitle {
   display: block;
   font-weight: 600;
-  font-size: 0.9375rem;
+  font-size: var(--font-size-15);
   color: var(--color-text-primary);
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-1);
 }
 
 .modeOptionDesc {
-  font-size: 0.875rem;
+  font-size: var(--font-size-13);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
 .successMessage {
-  font-size: 0.875rem;
-  color: var(--color-success);
-  background-color: var(--color-success-bg);
-  border: 1px solid var(--color-success);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  margin: 0 0 0.75rem;
+  font-size: var(--font-size-14);
+  color: var(--color-green-800);
+  background-color: var(--color-green-100);
+  border-radius: var(--radius-4);
+  padding: var(--space-5) var(--space-7);
+  margin: 0 0 var(--space-7);
 }
 
 .errorMessage {
-  font-size: 0.875rem;
-  color: var(--color-error);
-  background-color: var(--color-danger-bg);
-  border: 1px solid var(--color-danger);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  margin: 0 0 0.75rem;
+  font-size: var(--font-size-14);
+  color: var(--color-red-800);
+  background-color: var(--color-red-100);
+  border-radius: var(--radius-4);
+  padding: var(--space-5) var(--space-7);
+  margin: 0 0 var(--space-7);
 }
 
 /* Primary button */
 .primaryButton {
-  margin-top: 0.75rem;
-  padding: 0.5rem 1.25rem;
+  padding: var(--space-4) var(--space-8);
   border: none;
-  border-radius: 0.375rem;
-  background-color: var(--color-accent);
-  color: #ffffff;
-  font-size: 0.9375rem;
-  font-weight: 500;
+  border-radius: var(--radius-5);
+  background: var(--gradient-teal-horizontal);
+  color: var(--color-white);
+  font-size: var(--font-size-14);
+  font-weight: 600;
   cursor: pointer;
 }
 
 .primaryButton:hover {
-  background-color: var(--color-accent-hover, var(--color-accent));
-  filter: brightness(0.9);
+  filter: brightness(0.92);
 }
 
 .primaryButton:disabled {
@@ -239,7 +241,7 @@
 }
 
 .primaryButton:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-teal-500);
   outline-offset: 2px;
 }
 
@@ -335,16 +337,19 @@
 
 /* Verified badge */
 .verifiedBadge {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
+  background-color: var(--color-teal-50);
+  color: var(--color-teal-600);
+  border-radius: var(--radius-8);
+  font-size: var(--font-size-12);
+  padding: var(--space-1) var(--space-4);
 }
 
 /* Wellness preferences */
 .prefRow {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 0.75rem 0;
+  align-items: center;
+  padding: var(--space-7) 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -353,83 +358,95 @@
 }
 
 .prefLabel {
-  font-weight: 600;
-  font-size: 0.9375rem;
+  font-weight: 500;
+  font-size: var(--font-size-15);
   color: var(--color-text-primary);
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
 }
 
 .prefDesc {
-  font-size: 0.875rem;
+  font-size: var(--font-size-13);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
 /* Privacy section */
 .privacyText {
-  font-size: 0.9375rem;
+  font-size: var(--font-size-14);
   color: var(--color-text-secondary);
-  margin: 0 0 1rem;
+  line-height: 1.6;
+  margin: 0 0 var(--space-8);
 }
 
 .buttonRow {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-5);
   flex-wrap: wrap;
 }
 
 .secondaryButton {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  background-color: var(--color-bg-white);
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
+  padding: var(--space-4) var(--space-8);
+  border: 1.5px solid var(--color-teal-500);
+  border-radius: var(--radius-5);
+  background-color: var(--color-white);
+  color: var(--color-teal-500);
+  font-size: var(--font-size-14);
   font-weight: 500;
   cursor: pointer;
 }
 
 .secondaryButton:hover {
-  background-color: var(--color-bg-light);
+  background-color: var(--color-teal-50);
 }
 
 .secondaryButton:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-teal-500);
   outline-offset: 2px;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .dangerButton {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-danger);
-  border-radius: 0.375rem;
-  background-color: var(--color-bg-white);
-  color: var(--color-danger);
-  font-size: 0.875rem;
-  font-weight: 500;
+  padding: var(--space-4) var(--space-8);
+  border: none;
+  border-radius: var(--radius-5);
+  background: var(--gradient-red-solid);
+  color: var(--color-white);
+  font-size: var(--font-size-14);
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--shadow-lg);
 }
 
 .dangerButton:hover {
-  background-color: var(--color-danger-bg);
+  filter: brightness(0.92);
 }
 
 .dangerButton:focus-visible {
-  outline: 2px solid var(--color-danger);
+  outline: 2px solid var(--color-red-500);
   outline-offset: 2px;
+}
+
+.dangerButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Inline privacy policy block */
 .inlinePrivacyPolicy {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
+  margin-top: var(--space-9);
+  padding-top: var(--space-7);
   border-top: 1px solid var(--color-border);
 }
 
 .inlinePolicyHeading {
-  font-size: 1rem;
+  font-size: var(--font-size-16);
   font-weight: 600;
   color: var(--color-text-primary);
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-5);
 }
 
 /* Security section */
@@ -437,8 +454,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 0;
-  font-size: 0.9375rem;
+  padding: var(--space-7) 0;
+  font-size: var(--font-size-15);
+  font-weight: 500;
   color: var(--color-text-primary);
   border-bottom: 1px solid var(--color-border);
 }
@@ -448,9 +466,10 @@
 }
 
 .securityLink {
-  color: var(--color-accent);
+  color: var(--color-teal-500);
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
+  font-weight: 500;
 }
 
 .securityLink:hover {
@@ -458,22 +477,89 @@
 }
 
 .securityLink:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-teal-500);
   outline-offset: 2px;
 }
 
-@media (max-width: 640px) {
+/* ── Responsive breakpoints ─────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .page {
+    padding: 0 var(--space-7);
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 0 var(--space-5);
+    max-width: 100%;
+  }
+
+  .pageTitle {
+    font-size: var(--font-size-24);
+  }
+
+  .section {
+    padding: var(--space-7);
+  }
+
+  .profileCard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-5);
+  }
+
+  .modeOptions {
+    gap: var(--space-5);
+  }
+
   .profileField {
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--space-1);
   }
 
   .profileField dt {
     min-width: unset;
   }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 0 var(--space-3);
+  }
+
+  .section {
+    padding: var(--space-5);
+    margin-bottom: var(--space-5);
+  }
+
+  .buttonRow {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .secondaryButton,
+  .dangerButton,
+  .primaryButton {
+    width: 100%;
+    text-align: center;
+  }
+
+  .modeOption {
+    padding: var(--space-5);
+    gap: var(--space-3);
+  }
+
+  .modeOptionTitle {
+    font-size: var(--font-size-14);
+  }
+
+  .prefLabel {
+    font-size: var(--font-size-14);
+  }
 
   .profileCard {
-    flex-wrap: wrap;
+    gap: var(--space-3);
   }
 }
 
