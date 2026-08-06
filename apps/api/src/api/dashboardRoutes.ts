@@ -96,21 +96,14 @@ dashboardRouter.get("/", (req: Request, res: Response, next: NextFunction): void
       insights = await generateInsights(userId, db);
       insightsStarterState = undefined;
     }
-  // Trigger a mock refresh attempt for each stale device (logs sync_started + sync_failed).
-  // last_successful_sync_at and health_records are not modified on failure.
-  for (const d of data.devices) {
-    if (d.stale) {
-      attemptMockRefresh(`${userId}/${d.deviceType}`, d.deviceType, correlationId);
-    }
-  }
 
-  const deviceSyncStatuses: DeviceSyncStatus[] = data.devices.map((d) => ({
-    deviceType: d.deviceType,
-    status: d.connectionStatus,
-    lastSyncAt: d.lastSuccessfulSyncAt,
-    stale: d.stale,
-  }));
-  const lastSyncStatus = buildLastSyncStatus(deviceSyncStatuses, staleThresholdHours);
+    // Trigger a mock refresh attempt for each stale device (logs sync_started + sync_failed).
+    // last_successful_sync_at and health_records are not modified on failure.
+    for (const d of data.devices) {
+      if (d.stale) {
+        attemptMockRefresh(`${userId}/${d.deviceType}`, d.deviceType, correlationId);
+      }
+    }
 
     const responseData: Record<string, unknown> = {
       greeting,
