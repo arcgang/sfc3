@@ -67,12 +67,17 @@ export function LoginPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <p className={styles.logo}>W WellnessHub</p>
+        <div className={styles.logo}>
+          <div className={styles.logoIcon}>W</div>
+          <span className={styles.logoText}>WellnessHub</span>
+        </div>
 
-        <h1 className={styles.heading}>Welcome back</h1>
-        <p className={styles.subheading}>
-          Log in to access your wellness dashboard
-        </p>
+        <div className={styles.loginHeader}>
+          <h1 className={styles.heading}>Welcome back</h1>
+          <p className={styles.subheading}>
+            Log in to access your wellness dashboard
+          </p>
+        </div>
 
         {formError && (
           <p role="alert" className={styles.formError}>
@@ -119,16 +124,15 @@ export function LoginPage() {
                 {passwordError}
               </span>
             )}
-          </div>
-
-          <div className={styles.forgotRow}>
-            <a
-              href="#forgot-password-noop"
-              className={styles.forgotLink}
-              onClick={(e) => e.preventDefault()}
-            >
-              Forgot password?
-            </a>
+            <div className={styles.forgotRow}>
+              <a
+                href="#forgot-password-noop"
+                className={styles.forgotLink}
+                onClick={(e) => e.preventDefault()}
+              >
+                Forgot password?
+              </a>
+            </div>
           </div>
 
           <button type="submit" className={styles.submitButton} disabled={submitting}>
@@ -141,8 +145,12 @@ export function LoginPage() {
           Your session is secure and encrypted.
         </p>
 
+        <div className={styles.divider}>
+          <span className={styles.dividerText}>New to WellnessHub?</span>
+        </div>
+
         <p className={styles.signUpRow}>
-          {"New to WellnessHub? Don't have an account? "}
+          {"Don't have an account? "}
           <Link to="/register">Sign up</Link>
         </p>
       </div>
