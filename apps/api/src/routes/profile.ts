@@ -27,6 +27,100 @@ type ProfileBody = z.infer<typeof profileSchema>;
 
 export const profileRouter = Router();
 
+profileRouter.get(
+  "/",
+  (req: Request, res: Response, next: NextFunction): void => {
+    const correlationId =
+      typeof res.locals["correlationId"] === "string"
+        ? res.locals["correlationId"]
+        : "";
+
+    const rawUser = res.locals["user"];
+    if (
+      typeof rawUser !== "object" ||
+      rawUser === null ||
+      typeof (rawUser as Record<string, unknown>)["sub"] !== "string"
+    ) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: {
+          type: "AUTH_TOKEN_INVALID",
+          details: [{ code: "AUTH_TOKEN_INVALID", message: "Invalid token payload." }],
+        },
+      };
+      res.status(401).json(body);
+      return;
+    }
+    const jwtUser = rawUser as { sub: string; email?: string };
+    const userId = jwtUser.sub;
+    const email = jwtUser.email ?? null;
+
+    try {
+      const db = getDatabase();
+
+      const row = db
+        .prepare(
+          `SELECT p.id, p.user_id, p.full_name, p.date_of_birth, p.gender,
+                  p.wellness_preferences, p.persona_mode,
+                  p.privacy_policy_accepted, p.data_export_requested,
+                  p.data_deletion_requested, p.created_at, p.updated_at
+             FROM profiles p WHERE p.user_id = ?`,
+        )
+        .get(userId) as
+        | {
+            id: string;
+            user_id: string;
+            full_name: string;
+            date_of_birth: string | null;
+            gender: string | null;
+            wellness_preferences: string;
+            persona_mode: string;
+            privacy_policy_accepted: number;
+            data_export_requested: number;
+            data_deletion_requested: number;
+            created_at: string;
+            updated_at: string;
+          }
+        | undefined;
+
+      const now = new Date().toISOString();
+
+      if (!row) {
+        res.status(200).json({
+          meta: { correlationId, timestamp: now },
+          data: { profile: null, email },
+        });
+        return;
+      }
+
+      res.status(200).json({
+        meta: { correlationId, timestamp: now },
+        data: {
+          email,
+          profile: {
+            id: row.id,
+            userId: row.user_id,
+            fullName: row.full_name,
+            dateOfBirth: row.date_of_birth,
+            gender: row.gender,
+            wellnessPreferences: JSON.parse(row.wellness_preferences) as string[],
+            personaMode: row.persona_mode,
+            privacy: {
+              policyAccepted: row.privacy_policy_accepted === 1,
+              dataExportRequested: row.data_export_requested === 1,
+              dataDeletionRequested: row.data_deletion_requested === 1,
+            },
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+          },
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 profileRouter.put(
   "/",
   validateBody(profileSchema),
