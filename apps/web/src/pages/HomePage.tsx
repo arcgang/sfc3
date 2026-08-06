@@ -116,7 +116,8 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className={styles.statisticsSection} aria-label="Statistics">
+        <section className={styles.statisticsSection} aria-labelledby="statistics-heading">
+          <h2 id="statistics-heading" className="sr-only">Statistics</h2>
           <ul className={styles.statsGrid}>
             {STATS.map((stat) => (
               <li key={stat.id} className={styles.statItem}>
