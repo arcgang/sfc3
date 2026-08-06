@@ -180,20 +180,31 @@ export function buildSummaryCards(
 
 export interface DeviceSyncStatus {
   deviceType: string;
-  connectionStatus: string;
+  status: string;
   lastSyncAt: string | null;
   stale: boolean;
 }
 
 export interface LastSyncStatus {
   overallLastSyncAt: string | null;
+  isStale: boolean;
+  staleThresholdHours: number;
   stalenessLabel: string;
   deviceStatuses: DeviceSyncStatus[];
 }
 
-export function buildLastSyncStatus(devices: DeviceSyncStatus[]): LastSyncStatus {
+export function buildLastSyncStatus(
+  devices: DeviceSyncStatus[],
+  staleThresholdHours: number = 18,
+): LastSyncStatus {
   if (devices.length === 0) {
-    return { overallLastSyncAt: null, stalenessLabel: "No devices connected", deviceStatuses: [] };
+    return {
+      overallLastSyncAt: null,
+      isStale: false,
+      staleThresholdHours,
+      stalenessLabel: "No devices connected",
+      deviceStatuses: [],
+    };
   }
 
   const timestamps = devices
@@ -205,8 +216,8 @@ export function buildLastSyncStatus(devices: DeviceSyncStatus[]): LastSyncStatus
       ? timestamps.reduce((a, b) => (a > b ? a : b))
       : null;
 
-  const anyStale = devices.some((d) => d.stale);
-  const stalenessLabel = anyStale ? "Stale — sync recommended" : "Up to date";
+  const isStale = devices.some((d) => d.stale);
+  const stalenessLabel = isStale ? "Stale — sync recommended" : "Up to date";
 
-  return { overallLastSyncAt, stalenessLabel, deviceStatuses: devices };
+  return { overallLastSyncAt, isStale, staleThresholdHours, stalenessLabel, deviceStatuses: devices };
 }

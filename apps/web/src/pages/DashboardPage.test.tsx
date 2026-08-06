@@ -42,6 +42,8 @@ function makeDashboardResponse(overrides: {
       summaryCards: overrides.cards ?? defaultCards,
       lastSyncStatus: {
         overallLastSyncAt: "2026-08-06T10:00:00.000Z",
+        isStale: false,
+        staleThresholdHours: 18,
         stalenessLabel: "Up to date",
         deviceStatuses: [],
       },
