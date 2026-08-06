@@ -420,3 +420,202 @@ describe("PUT /api/v1/profile — missing or invalid JWT → 401", () => {
     expect(body.error.type).toBe("AUTH_TOKEN_INVALID");
   });
 });
+
+// ---------------------------------------------------------------------------
+// personaMode — valid values persisted and returned
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — personaMode valid values", () => {
+  it("persists personaMode=fitness to profiles.persona_mode", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "fitness" });
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT persona_mode FROM profiles WHERE user_id = ?")
+      .get(userId) as { persona_mode: string } | undefined;
+    db.close();
+
+    expect(row?.persona_mode).toBe("fitness");
+  });
+
+  it("persists personaMode=elder_friendly to profiles.persona_mode", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "elder_friendly" });
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT persona_mode FROM profiles WHERE user_id = ?")
+      .get(userId) as { persona_mode: string } | undefined;
+    db.close();
+
+    expect(row?.persona_mode).toBe("elder_friendly");
+  });
+
+  it("persists personaMode=chronic_care_aware to profiles.persona_mode", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "chronic_care_aware" });
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT persona_mode FROM profiles WHERE user_id = ?")
+      .get(userId) as { persona_mode: string } | undefined;
+    db.close();
+
+    expect(row?.persona_mode).toBe("chronic_care_aware");
+  });
+
+  it("returns data.profile.personaMode matching the submitted value", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "fitness" });
+
+    const body = res.body as { data: { profile: { personaMode: string } } };
+    expect(body.data.profile.personaMode).toBe("fitness");
+  });
+
+  it("updates persona_mode on a second PUT when personaMode changes", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "fitness" });
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "elder_friendly" });
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT persona_mode FROM profiles WHERE user_id = ?")
+      .get(userId) as { persona_mode: string } | undefined;
+    db.close();
+
+    expect(row?.persona_mode).toBe("elder_friendly");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// personaMode — absent value defaults to 'default'
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — missing personaMode defaults to default", () => {
+  it("stores persona_mode=default when personaMode is absent from the payload", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT persona_mode FROM profiles WHERE user_id = ?")
+      .get(userId) as { persona_mode: string } | undefined;
+    db.close();
+
+    expect(row?.persona_mode).toBe("default");
+  });
+
+  it("returns data.profile.personaMode=default when personaMode is absent from the payload", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send(VALID_BODY);
+
+    const body = res.body as { data: { profile: { personaMode: string } } };
+    expect(body.data.profile.personaMode).toBe("default");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// personaMode — unrecognized value → 422 INVALID_ENUM
+// ---------------------------------------------------------------------------
+
+describe("PUT /api/v1/profile — unrecognized personaMode → 422", () => {
+  it("returns HTTP 422 when personaMode is an unrecognized value", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "ninja_mode" });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("returns error.type REQUEST_VALIDATION_FAILED for an unrecognized personaMode", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "ninja_mode" });
+
+    const body = res.body as { error: { type: string } };
+    expect(body.error.type).toBe("REQUEST_VALIDATION_FAILED");
+  });
+
+  it("returns an error detail with field=personaMode for an unrecognized personaMode", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = seedUser(dbPath);
+    const token = makeToken(userId);
+
+    const res = await supertest(app)
+      .put("/api/v1/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...VALID_BODY, personaMode: "ninja_mode" });
+
+    const body = res.body as {
+      error: { details: Array<{ field: string; code: string }> };
+    };
+    expect(body.error.details.some((d) => d.field === "personaMode")).toBe(true);
+  });
+});
