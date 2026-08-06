@@ -64,12 +64,21 @@ interface TrendsData {
   stepsGoal: number | null;
 }
 
+interface DashboardInsight {
+  category: string;
+  title: string;
+  narrative: string;
+  icon: string;
+}
+
 interface DashboardPayload {
   greeting: string;
   personaMode: string;
   summaryCards: SummaryCard[];
   lastSyncStatus: LastSyncStatus;
   trends?: TrendsData;
+  insights?: DashboardInsight[];
+  insights_starter_state?: boolean;
 }
 
 interface GoalCounts {
@@ -714,22 +723,25 @@ export function DashboardPage() {
       <section aria-labelledby="insights-heading" className={styles.infoGrid}>
         <div>
           <h2 id="insights-heading">Insights</h2>
-          <ul className={styles.insightList}>
-            <li className={styles.insightItem}>
-              <span aria-hidden="true">💡</span>
-              <div>
-                <strong>Sleep Improvement</strong>
-                <p>Your sleep average improved by 32 minutes compared with last week. Keep up the consistent bedtime routine!</p>
-              </div>
-            </li>
-            <li className={styles.insightItem}>
-              <span aria-hidden="true">🎯</span>
-              <div>
-                <strong>Activity Streak</strong>
-                <p>{"You've hit your step goal 5 days in a row. Just 2 more days for a full week!"}</p>
-              </div>
-            </li>
-          </ul>
+          {dashLoading ? (
+            <p className={styles.insightLoading} aria-busy="true">Loading insights…</p>
+          ) : (dashboard?.insights_starter_state || !dashboard?.insights?.length) ? (
+            <p className={styles.insightStarterState}>
+              Sync your devices to unlock personalized insights.
+            </p>
+          ) : (
+            <ul className={styles.insightList}>
+              {dashboard.insights.map((insight) => (
+                <li key={insight.category} className={styles.insightItem}>
+                  <span aria-hidden="true">{insight.icon}</span>
+                  <div>
+                    <strong>{insight.title}</strong>
+                    <p>{insight.narrative}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div>

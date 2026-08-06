@@ -35,6 +35,13 @@ const INTRADAY_HR = [
   { recordedAt: "2026-08-06T16:00:00.000Z", bpm: 78 },
 ];
 
+interface MockInsight {
+  category: string;
+  title: string;
+  narrative: string;
+  icon: string;
+}
+
 function makeDashboardResponse(overrides: {
   greeting?: string;
   personaMode?: string;
@@ -51,6 +58,8 @@ function makeDashboardResponse(overrides: {
     heartRateToday: Array<{ recordedAt: string; bpm: number }>;
     stepsGoal: number | null;
   };
+  insights?: MockInsight[];
+  insights_starter_state?: boolean;
 } = {}) {
   const defaultCards = [
     { id: "HeartRate", label: "Resting Heart Rate", value: 103, unit: "bpm", badge: "⚠️ Monitor", emptyState: false },
@@ -75,6 +84,8 @@ function makeDashboardResponse(overrides: {
         heartRateToday: INTRADAY_HR,
         stepsGoal: 10000,
       },
+      ...(overrides.insights !== undefined ? { insights: overrides.insights } : {}),
+      ...(overrides.insights_starter_state !== undefined ? { insights_starter_state: overrides.insights_starter_state } : {}),
     },
   };
 }
@@ -649,4 +660,109 @@ test("trends section renders both charts without secondary navigation", async ()
   await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
   // Both charts visible at once — no tab/panel interaction required
   expect(screen.getAllByRole("img", { name: /fluctuations|step activity/i }).length).toBe(2);
+});
+
+// ── Insights section ──────────────────────────────────────────────────────────
+
+test("Insights section heading is rendered", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  screen.getByRole("heading", { name: "Insights", level: 2 });
+});
+
+test("renders two insight entries from mock API data", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          insights: [
+            {
+              category: "SleepQualityImproved",
+              title: "Sleep Improvement",
+              narrative: "Your sleep average improved by 32 minutes compared with last week.",
+              icon: "💡",
+            },
+            {
+              category: "ActivityStreak",
+              title: "Activity Streak",
+              narrative: "You've hit your step goal 5 days in a row.",
+              icon: "🎯",
+            },
+          ],
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  const section = screen.getByRole("heading", { name: "Insights", level: 2 }).closest("div")!;
+  expect(within(section).getByText("Sleep Improvement")).toBeTruthy();
+  expect(within(section).getByText("Your sleep average improved by 32 minutes compared with last week.")).toBeTruthy();
+  expect(within(section).getByText("Activity Streak")).toBeTruthy();
+  expect(within(section).getByText("You've hit your step goal 5 days in a row.")).toBeTruthy();
+});
+
+test("renders starter-state message when insights array is empty", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(makeDashboardResponse({ insights: [] }));
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  expect(screen.getByText("Sync your devices to unlock personalized insights.")).toBeTruthy();
+});
+
+test("renders starter-state message when insights_starter_state is true", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({ insights_starter_state: true, insights: [] }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  expect(screen.getByText("Sync your devices to unlock personalized insights.")).toBeTruthy();
+});
+
+test("does not crash when insights key is absent from API response", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(makeDashboardResponse({}));
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  // Insights heading still present; starter-state message shown because insights is absent
+  screen.getByRole("heading", { name: "Insights", level: 2 });
+  expect(screen.getByText("Sync your devices to unlock personalized insights.")).toBeTruthy();
+});
+
+test("Insights section does not add secondary navigation", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          insights: [
+            {
+              category: "SleepQualityImproved",
+              title: "Sleep Improvement",
+              narrative: "Your sleep average improved.",
+              icon: "💡",
+            },
+          ],
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  // Only one navigation landmark should be present (the sidebar nav)
+  expect(screen.getAllByRole("navigation").length).toBe(1);
 });
