@@ -44,9 +44,21 @@ interface HeartRatePoint {
   bpm: number;
 }
 
+interface SleepDayPoint {
+  date: string;
+  minutes: number;
+}
+
+interface WeightDayPoint {
+  date: string;
+  kg: number;
+}
+
 interface TrendsData {
   steps7d: StepsDayPoint[];
   heartRateToday: HeartRatePoint[];
+  sleepMinutes7d: SleepDayPoint[];
+  weight7d: WeightDayPoint[];
   stepsGoal: number | null;
 }
 
@@ -380,6 +392,168 @@ function StepsChart({ points, goal }: StepsChartProps) {
   );
 }
 
+// ── Sleep line chart ──────────────────────────────────────────────────────────
+
+interface SleepChartProps {
+  points: SleepDayPoint[];
+}
+
+function SleepChart({ points }: SleepChartProps) {
+  if (points.length < 2) {
+    return (
+      <div className={styles.chartEmpty} aria-label="7-Day Sleep Duration">
+        <p>Not enough sleep data this week yet — data will appear once your smartwatch syncs for at least two days.</p>
+      </div>
+    );
+  }
+
+  const minutes = points.map((p) => p.minutes);
+  const minM = Math.min(...minutes);
+  const maxM = Math.max(...minutes);
+
+  const pathPoints = points.map((p, i) => {
+    const x = scaleX(i, points.length);
+    const y = scaleY(p.minutes, minM, maxM);
+    return `${x},${y}`;
+  });
+  const d = `M ${pathPoints.join(" L ")}`;
+
+  const toHours = (m: number) => (m / 60).toFixed(1);
+
+  return (
+    <div className={styles.chartWrapper}>
+      <div className={styles.chartMeta}>
+        Range: {toHours(minM)}h – {toHours(maxM)}h
+      </div>
+      <svg
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        role="img"
+        aria-label={`Line chart of 7-day sleep duration, range ${toHours(minM)} to ${toHours(maxM)} hours`}
+        className={styles.chart}
+      >
+        {[minM, Math.round((minM + maxM) / 2), maxM].map((v) => (
+          <text
+            key={v}
+            x={PAD.left - 6}
+            y={scaleY(v, minM, maxM) + 4}
+            textAnchor="end"
+            fontSize="10"
+            fill="currentColor"
+            className={styles.chartAxisLabel}
+          >
+            {toHours(v)}h
+          </text>
+        ))}
+        {points.map((p, i) => {
+          const x = scaleX(i, points.length);
+          return (
+            <text
+              key={p.date}
+              x={x}
+              y={CHART_H - 4}
+              textAnchor="middle"
+              fontSize="10"
+              fill="currentColor"
+              className={styles.chartAxisLabel}
+            >
+              {dayLabel(p.date)}
+            </text>
+          );
+        })}
+        <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
+        <line x1={PAD.left} y1={PAD.top + PLOT_H} x2={PAD.left + PLOT_W} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
+        <path d={d} fill="none" stroke="var(--color-accent, #2563eb)" strokeWidth="2" strokeLinejoin="round" />
+        <circle
+          cx={scaleX(points.length - 1, points.length)}
+          cy={scaleY(points[points.length - 1]!.minutes, minM, maxM)}
+          r="4"
+          fill="var(--color-accent, #2563eb)"
+        />
+      </svg>
+    </div>
+  );
+}
+
+// ── Weight line chart ─────────────────────────────────────────────────────────
+
+interface WeightChartProps {
+  points: WeightDayPoint[];
+}
+
+function WeightChart({ points }: WeightChartProps) {
+  if (points.length < 2) {
+    return (
+      <div className={styles.chartEmpty} aria-label="7-Day Weight Trend">
+        <p>Not enough weight data this week yet — data will appear once your smart scale syncs for at least two days.</p>
+      </div>
+    );
+  }
+
+  const kgs = points.map((p) => p.kg);
+  const minKg = Math.min(...kgs);
+  const maxKg = Math.max(...kgs);
+
+  const pathPoints = points.map((p, i) => {
+    const x = scaleX(i, points.length);
+    const y = scaleY(p.kg, minKg, maxKg);
+    return `${x},${y}`;
+  });
+  const d = `M ${pathPoints.join(" L ")}`;
+
+  return (
+    <div className={styles.chartWrapper}>
+      <div className={styles.chartMeta}>
+        Range: {minKg} – {maxKg} kg
+      </div>
+      <svg
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        role="img"
+        aria-label={`Line chart of 7-day weight trend, range ${minKg} to ${maxKg} kg`}
+        className={styles.chart}
+      >
+        {[minKg, Math.round(((minKg + maxKg) / 2) * 10) / 10, maxKg].map((v) => (
+          <text
+            key={v}
+            x={PAD.left - 6}
+            y={scaleY(v, minKg, maxKg) + 4}
+            textAnchor="end"
+            fontSize="10"
+            fill="currentColor"
+            className={styles.chartAxisLabel}
+          >
+            {v}
+          </text>
+        ))}
+        {points.map((p, i) => {
+          const x = scaleX(i, points.length);
+          return (
+            <text
+              key={p.date}
+              x={x}
+              y={CHART_H - 4}
+              textAnchor="middle"
+              fontSize="10"
+              fill="currentColor"
+              className={styles.chartAxisLabel}
+            >
+              {dayLabel(p.date)}
+            </text>
+          );
+        })}
+        <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
+        <line x1={PAD.left} y1={PAD.top + PLOT_H} x2={PAD.left + PLOT_W} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
+        <path d={d} fill="none" stroke="var(--color-accent, #2563eb)" strokeWidth="2" strokeLinejoin="round" />
+        <circle
+          cx={scaleX(points.length - 1, points.length)}
+          cy={scaleY(points[points.length - 1]!.kg, minKg, maxKg)}
+          r="4"
+          fill="var(--color-accent, #2563eb)"
+        />
+      </svg>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
@@ -514,6 +688,22 @@ export function DashboardPage() {
                 points={dashboard!.trends?.steps7d ?? []}
                 goal={dashboard!.trends?.stepsGoal ?? null}
               />
+            )}
+          </div>
+          <div className={styles.chartCard}>
+            <h3 className={styles.chartTitle}>7-Day Sleep Duration</h3>
+            {dashLoading ? (
+              <div className={styles.chartEmpty} aria-busy="true">Loading…</div>
+            ) : dashError ? null : (
+              <SleepChart points={dashboard!.trends?.sleepMinutes7d ?? []} />
+            )}
+          </div>
+          <div className={styles.chartCard}>
+            <h3 className={styles.chartTitle}>7-Day Weight Trend</h3>
+            {dashLoading ? (
+              <div className={styles.chartEmpty} aria-busy="true">Loading…</div>
+            ) : dashError ? null : (
+              <WeightChart points={dashboard!.trends?.weight7d ?? []} />
             )}
           </div>
         </div>

@@ -71,9 +71,21 @@ export interface HeartRatePoint {
   bpm: number;
 }
 
+export interface SleepDayPoint {
+  date: string;       // YYYY-MM-DD
+  minutes: number;
+}
+
+export interface WeightDayPoint {
+  date: string;       // YYYY-MM-DD
+  kg: number;
+}
+
 export interface TrendsData {
   steps7d: StepsDayPoint[];
   heartRateToday: HeartRatePoint[];
+  sleepMinutes7d: SleepDayPoint[];
+  weight7d: WeightDayPoint[];
   stepsGoal: number | null;
 }
 
@@ -254,9 +266,57 @@ export class DashboardDao {
       )
       .get(userId) as GoalRow | undefined;
 
+    // Daily sleep_minutes per calendar day — sum all sleep_minutes records per day
+    interface SleepRow { day: string; minutes: number }
+    const sleepRows = this.db
+      .prepare(
+        `SELECT substr(recorded_at, 1, 10) AS day,
+                SUM(value)                 AS minutes
+           FROM health_records
+          WHERE user_id    = ?
+            AND source_type = 'smartwatch'
+            AND metric_name = 'sleep_minutes'
+            AND substr(recorded_at, 1, 10) >= ?
+            AND substr(recorded_at, 1, 10) <= ?
+          GROUP BY day
+          ORDER BY day ASC
+          LIMIT ?`,
+      )
+      .all(userId, windowStart, todayStr, TREND_DAYS) as SleepRow[];
+
+    const sleepMinutes7d: SleepDayPoint[] = sleepRows.map((r) => ({
+      date: r.day,
+      minutes: r.minutes,
+    }));
+
+    // Daily weight_kg — latest reading per calendar day from smart_scale
+    interface WeightRow { day: string; kg: number }
+    const weightRows = this.db
+      .prepare(
+        `SELECT substr(recorded_at, 1, 10) AS day,
+                AVG(value)                 AS kg
+           FROM health_records
+          WHERE user_id    = ?
+            AND source_type = 'smart_scale'
+            AND metric_name = 'weight_kg'
+            AND substr(recorded_at, 1, 10) >= ?
+            AND substr(recorded_at, 1, 10) <= ?
+          GROUP BY day
+          ORDER BY day ASC
+          LIMIT ?`,
+      )
+      .all(userId, windowStart, todayStr, TREND_DAYS) as WeightRow[];
+
+    const weight7d: WeightDayPoint[] = weightRows.map((r) => ({
+      date: r.day,
+      kg: Math.round(r.kg * 10) / 10,
+    }));
+
     return {
       steps7d,
       heartRateToday,
+      sleepMinutes7d,
+      weight7d,
       stepsGoal: goalRow?.target_value ?? null,
     };
   }
