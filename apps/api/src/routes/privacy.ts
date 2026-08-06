@@ -71,8 +71,8 @@ privacyRouter.post(
 
     const message =
       input.requestType === "export"
-        ? "Your data export request has been received. You will be notified when it is ready."
-        : "Your account deletion request has been received. Your account will be processed for deletion.";
+        ? "Your export request has been received. We will notify you when your data is ready."
+        : "Your account deletion request has been received. We will process it within 30 days.";
 
     res.status(201).json({
       meta: { correlationId, timestamp: now },
