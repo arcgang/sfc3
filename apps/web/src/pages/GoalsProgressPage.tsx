@@ -113,16 +113,14 @@ function GoalCard({ goal }: { goal: GoalWithProgress }) {
   return (
     <li className={`${styles.goalCard} ${isMuted ? styles.goalCardMuted : ""}`}>
       <div className={styles.goalHeader}>
-        <span className={styles.goalIcon} aria-hidden="true">
+        <div className={styles.goalIcon} aria-hidden="true">
           {goalTypeIcon(goal.goalType)}
-        </span>
-        <div className={styles.goalHeaderText}>
-          <span className={`${styles.statusBadge} ${statusBadgeClass(goal.status)}`}>
-            {STATUS_LABEL[goal.status] ?? goal.status}
-          </span>
-          <h3>{goalTypeLabel(goal.goalType)}</h3>
         </div>
+        <span className={`${styles.statusBadge} ${statusBadgeClass(goal.status)}`}>
+          {STATUS_LABEL[goal.status] ?? goal.status}
+        </span>
       </div>
+      <h3 className={styles.goalName}>{goalTypeLabel(goal.goalType)}</h3>
       <p className={styles.goalMeta}>
         {goal.cadence === "daily" ? "Daily goal" : "Weekly goal"}
         {goal.startDate ? ` • Started ${goal.startDate}` : ""}
