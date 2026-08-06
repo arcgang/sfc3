@@ -1,3 +1,4 @@
+import "./db.js";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import express from "express";
