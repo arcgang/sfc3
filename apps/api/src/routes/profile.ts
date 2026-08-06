@@ -108,6 +108,12 @@ profileRouter.get(
         ? res.locals["correlationId"]
         : "";
 
+    const rawUser = res.locals["user"];
+    if (
+      typeof rawUser !== "object" ||
+      rawUser === null ||
+      typeof (rawUser as Record<string, unknown>)["sub"] !== "string"
+    ) {
     const userId = extractUserId(res);
     if (userId === null) {
       const body: ErrorResponse = {
