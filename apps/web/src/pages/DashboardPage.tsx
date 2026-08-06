@@ -294,7 +294,7 @@ function StepsChart({ points, goal }: StepsChartProps) {
       <svg
         viewBox={`0 0 ${CHART_W} ${CHART_H}`}
         role="img"
-        aria-label={`Bar chart of this week's daily step totals${goal !== null ? `, goal ${goal.toLocaleString()} steps per day` : ""}`}
+        aria-label={`Bar chart of this week's step activity${goal !== null ? `, goal ${goal.toLocaleString()} steps per day` : ""}`}
         className={styles.chart}
       >
         {/* y-axis labels */}
