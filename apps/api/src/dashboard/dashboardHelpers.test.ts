@@ -294,39 +294,59 @@ describe("buildLastSyncStatus", () => {
   it("returns 'No devices connected' label and null timestamp when devices array is empty", () => {
     const result = buildLastSyncStatus([]);
     expect(result.overallLastSyncAt).toBeNull();
+    expect(result.isStale).toBe(false);
+    expect(result.staleThresholdHours).toBe(18);
     expect(result.stalenessLabel).toBe("No devices connected");
     expect(result.deviceStatuses).toHaveLength(0);
   });
 
-  it("returns 'Up to date' label when no device is stale", () => {
+  it("returns 'Up to date' label and isStale false when no device is stale", () => {
     const result = buildLastSyncStatus([
-      { deviceType: "smartwatch", connectionStatus: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false },
+      { deviceType: "smartwatch", status: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false },
     ]);
     expect(result.stalenessLabel).toBe("Up to date");
+    expect(result.isStale).toBe(false);
     expect(result.overallLastSyncAt).toBe("2099-01-01T10:00:00Z");
   });
 
-  it("returns 'Stale — sync recommended' label when any device is stale", () => {
+  it("returns 'Stale — sync recommended' label and isStale true when any device is stale", () => {
     const result = buildLastSyncStatus([
-      { deviceType: "smartwatch", connectionStatus: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false },
-      { deviceType: "smart_scale", connectionStatus: "connected", lastSyncAt: "2099-01-01T08:00:00Z", stale: true },
+      { deviceType: "smartwatch", status: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false },
+      { deviceType: "smart_scale", status: "connected", lastSyncAt: "2099-01-01T08:00:00Z", stale: true },
     ]);
     expect(result.stalenessLabel).toBe("Stale — sync recommended");
+    expect(result.isStale).toBe(true);
   });
 
   it("picks the most recent lastSyncAt as overallLastSyncAt", () => {
     const result = buildLastSyncStatus([
-      { deviceType: "smartwatch", connectionStatus: "connected", lastSyncAt: "2099-01-01T08:00:00Z", stale: false },
-      { deviceType: "smart_scale", connectionStatus: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false },
+      { deviceType: "smartwatch", status: "connected", lastSyncAt: "2099-01-01T08:00:00Z", stale: false },
+      { deviceType: "smart_scale", status: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false },
     ]);
     expect(result.overallLastSyncAt).toBe("2099-01-01T10:00:00Z");
   });
 
   it("returns null overallLastSyncAt when all devices have null lastSyncAt", () => {
     const result = buildLastSyncStatus([
-      { deviceType: "smartwatch", connectionStatus: "connected", lastSyncAt: null, stale: true },
+      { deviceType: "smartwatch", status: "connected", lastSyncAt: null, stale: true },
     ]);
     expect(result.overallLastSyncAt).toBeNull();
+    expect(result.isStale).toBe(true);
     expect(result.stalenessLabel).toBe("Stale — sync recommended");
+  });
+
+  it("propagates caller-supplied staleThresholdHours into the result", () => {
+    const result = buildLastSyncStatus(
+      [{ deviceType: "smartwatch", status: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false }],
+      24,
+    );
+    expect(result.staleThresholdHours).toBe(24);
+  });
+
+  it("defaults staleThresholdHours to 18 when not supplied", () => {
+    const result = buildLastSyncStatus([
+      { deviceType: "smartwatch", status: "connected", lastSyncAt: "2099-01-01T10:00:00Z", stale: false },
+    ]);
+    expect(result.staleThresholdHours).toBe(18);
   });
 });

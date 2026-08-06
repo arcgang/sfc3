@@ -40,6 +40,7 @@ dashboardRouter.get("/", (req: Request, res: Response): void => {
   const data = dao.getForUser(userId);
   const profile = dao.getUserProfile(userId);
   const cardMetrics = dao.getCardMetrics(userId);
+  const trends = dao.getTrendsForUser(userId);
 
   // Greeting derived from server wall-clock hour (UTC)
   const hourUtc = new Date().getUTCHours();
@@ -63,14 +64,22 @@ dashboardRouter.get("/", (req: Request, res: Response): void => {
   const personaMode = (profile.personaMode as PersonaMode) ?? "default";
   const summaryCards = buildSummaryCards(metrics, devices, personaMode);
 
-  // Last sync status derived from device rows
+  // Last sync status derived from device rows.
+  // staleThresholdHours for the overall payload uses the minimum (strictest) threshold
+  // across all connected devices, or the LLD default of 18h when none are present.
+  const DEFAULT_STALE_THRESHOLD = 18;
+  const staleThresholdHours =
+    data.devices.length > 0
+      ? Math.min(...data.devices.map((d) => d.staleAfterHours))
+      : DEFAULT_STALE_THRESHOLD;
+
   const deviceSyncStatuses: DeviceSyncStatus[] = data.devices.map((d) => ({
     deviceType: d.deviceType,
-    connectionStatus: d.connectionStatus,
+    status: d.connectionStatus,
     lastSyncAt: d.lastSuccessfulSyncAt,
     stale: d.stale,
   }));
-  const lastSyncStatus = buildLastSyncStatus(deviceSyncStatuses);
+  const lastSyncStatus = buildLastSyncStatus(deviceSyncStatuses, staleThresholdHours);
 
   res.setHeader("X-Correlation-Id", correlationId);
   res.status(200).json({
@@ -80,6 +89,7 @@ dashboardRouter.get("/", (req: Request, res: Response): void => {
       personaMode,
       summaryCards,
       lastSyncStatus,
+      trends,
       // Legacy raw device/metric fields preserved for existing consumers
       devices: data.devices,
       smartwatch: data.smartwatch,

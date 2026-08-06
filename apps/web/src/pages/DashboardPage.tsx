@@ -18,13 +18,15 @@ interface SummaryCard {
 
 interface DeviceSyncStatus {
   deviceType: string;
-  connectionStatus: string;
+  status: string;
   lastSyncAt: string | null;
   stale: boolean;
 }
 
 interface LastSyncStatus {
   overallLastSyncAt: string | null;
+  isStale: boolean;
+  staleThresholdHours: number;
   stalenessLabel: string;
   deviceStatuses: DeviceSyncStatus[];
 }
@@ -34,11 +36,28 @@ interface GoalSummary {
   status: string;
 }
 
+interface StepsDayPoint {
+  date: string;
+  stepCount: number;
+}
+
+interface HeartRatePoint {
+  recordedAt: string;
+  bpm: number;
+}
+
+interface TrendsData {
+  steps7d: StepsDayPoint[];
+  heartRateToday: HeartRatePoint[];
+  stepsGoal: number | null;
+}
+
 interface DashboardPayload {
   greeting: string;
   personaMode: string;
   summaryCards: SummaryCard[];
   lastSyncStatus: LastSyncStatus;
+  trends?: TrendsData;
 }
 
 interface GoalCounts {
@@ -117,6 +136,249 @@ function MetricCard({ card }: MetricCardProps) {
       </strong>
       {card.badge && <span className={styles.metricStatus}>{card.badge}</span>}
     </li>
+  );
+}
+
+// ── Chart helpers ─────────────────────────────────────────────────────────────
+
+const CHART_W = 480;
+const CHART_H = 140;
+const PAD = { top: 16, right: 16, bottom: 32, left: 44 };
+const PLOT_W = CHART_W - PAD.left - PAD.right;
+const PLOT_H = CHART_H - PAD.top - PAD.bottom;
+
+function scaleY(value: number, min: number, max: number): number {
+  if (max === min) return PAD.top + PLOT_H / 2;
+  return PAD.top + PLOT_H - ((value - min) / (max - min)) * PLOT_H;
+}
+
+function scaleX(index: number, count: number): number {
+  if (count <= 1) return PAD.left + PLOT_W / 2;
+  return PAD.left + (index / (count - 1)) * PLOT_W;
+}
+
+const DAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00Z");
+  return DAYS_SHORT[d.getUTCDay() === 0 ? 6 : d.getUTCDay() - 1] ?? dateStr.slice(5);
+}
+
+// ── Heart Rate line chart ─────────────────────────────────────────────────────
+
+interface HeartRateChartProps {
+  points: HeartRatePoint[];
+}
+
+function HeartRateChart({ points }: HeartRateChartProps) {
+  if (points.length < 2) {
+    return (
+      <div className={styles.chartEmpty} aria-label="Today's Heart Rate Fluctuations">
+        <p>Not enough heart rate data for today yet — readings will appear once your smartwatch syncs.</p>
+      </div>
+    );
+  }
+
+  const bpms = points.map((p) => p.bpm);
+  const minBpm = Math.min(...bpms);
+  const maxBpm = Math.max(...bpms);
+  const currentBpm = bpms[bpms.length - 1]!;
+
+  const pathPoints = points.map((p, i) => {
+    const x = scaleX(i, points.length);
+    const y = scaleY(p.bpm, minBpm, maxBpm);
+    return `${x},${y}`;
+  });
+  const d = `M ${pathPoints.join(" L ")}`;
+
+  // x-axis: show up to 5 evenly spaced time labels
+  const tickCount = Math.min(5, points.length);
+  const tickIndices = Array.from({ length: tickCount }, (_, i) =>
+    Math.round((i / (tickCount - 1)) * (points.length - 1)),
+  );
+
+  return (
+    <div className={styles.chartWrapper}>
+      <div className={styles.chartMeta} aria-label={`Range: ${minBpm}–${maxBpm} BPM | Current: ${currentBpm} BPM`}>
+        Range: {minBpm}–{maxBpm} BPM | Current: {currentBpm} BPM
+      </div>
+      <svg
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        role="img"
+        aria-label={`Line chart of today's heart rate fluctuations, range ${minBpm} to ${maxBpm} BPM`}
+        className={styles.chart}
+      >
+        {/* y-axis labels */}
+        {[minBpm, Math.round((minBpm + maxBpm) / 2), maxBpm].map((v) => (
+          <text
+            key={v}
+            x={PAD.left - 6}
+            y={scaleY(v, minBpm, maxBpm) + 4}
+            textAnchor="end"
+            fontSize="10"
+            fill="currentColor"
+            className={styles.chartAxisLabel}
+          >
+            {v}
+          </text>
+        ))}
+        {/* x-axis tick labels */}
+        {tickIndices.map((idx) => {
+          const p = points[idx]!;
+          const x = scaleX(idx, points.length);
+          const timeStr = new Date(p.recordedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          return (
+            <text
+              key={idx}
+              x={x}
+              y={CHART_H - 4}
+              textAnchor="middle"
+              fontSize="10"
+              fill="currentColor"
+              className={styles.chartAxisLabel}
+            >
+              {timeStr}
+            </text>
+          );
+        })}
+        {/* axis lines */}
+        <line
+          x1={PAD.left} y1={PAD.top}
+          x2={PAD.left} y2={PAD.top + PLOT_H}
+          stroke="currentColor" strokeOpacity="0.2" strokeWidth="1"
+        />
+        <line
+          x1={PAD.left} y1={PAD.top + PLOT_H}
+          x2={PAD.left + PLOT_W} y2={PAD.top + PLOT_H}
+          stroke="currentColor" strokeOpacity="0.2" strokeWidth="1"
+        />
+        {/* line */}
+        <path d={d} fill="none" stroke="var(--color-accent, #2563eb)" strokeWidth="2" strokeLinejoin="round" />
+        {/* current dot */}
+        <circle
+          cx={scaleX(points.length - 1, points.length)}
+          cy={scaleY(currentBpm, minBpm, maxBpm)}
+          r="4"
+          fill="var(--color-accent, #2563eb)"
+        />
+      </svg>
+    </div>
+  );
+}
+
+// ── Steps bar chart ───────────────────────────────────────────────────────────
+
+interface StepsChartProps {
+  points: StepsDayPoint[];
+  goal: number | null;
+}
+
+function StepsChart({ points, goal }: StepsChartProps) {
+  if (points.length < 2) {
+    return (
+      <div className={styles.chartEmpty} aria-label="This Week's Step Activity">
+        <p>Not enough step data this week yet — data will appear once your smartwatch syncs for at least two days.</p>
+      </div>
+    );
+  }
+
+  const maxSteps = Math.max(...points.map((p) => p.stepCount), goal ?? 0, 1);
+  const barW = Math.floor(PLOT_W / points.length) - 4;
+
+  const goalY = goal !== null ? scaleY(goal, 0, maxSteps) : null;
+
+  return (
+    <div className={styles.chartWrapper}>
+      {goal !== null && (
+        <div className={styles.chartMeta}>
+          Goal: {goal.toLocaleString()} steps/day
+        </div>
+      )}
+      <svg
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        role="img"
+        aria-label={`Bar chart of this week's step activity${goal !== null ? `, goal ${goal.toLocaleString()} steps per day` : ""}`}
+        className={styles.chart}
+      >
+        {/* y-axis labels */}
+        {[0, Math.round(maxSteps / 2), maxSteps].map((v) => (
+          <text
+            key={v}
+            x={PAD.left - 6}
+            y={scaleY(v, 0, maxSteps) + 4}
+            textAnchor="end"
+            fontSize="10"
+            fill="currentColor"
+            className={styles.chartAxisLabel}
+          >
+            {v >= 1000 ? `${Math.round(v / 1000)}k` : v}
+          </text>
+        ))}
+        {/* axis lines */}
+        <line
+          x1={PAD.left} y1={PAD.top}
+          x2={PAD.left} y2={PAD.top + PLOT_H}
+          stroke="currentColor" strokeOpacity="0.2" strokeWidth="1"
+        />
+        <line
+          x1={PAD.left} y1={PAD.top + PLOT_H}
+          x2={PAD.left + PLOT_W} y2={PAD.top + PLOT_H}
+          stroke="currentColor" strokeOpacity="0.2" strokeWidth="1"
+        />
+        {/* bars */}
+        {points.map((p, i) => {
+          const barX = PAD.left + (i / points.length) * PLOT_W + 2;
+          const barY = scaleY(p.stepCount, 0, maxSteps);
+          const barH = PAD.top + PLOT_H - barY;
+          return (
+            <g key={p.date}>
+              <rect
+                x={barX}
+                y={barY}
+                width={barW}
+                height={Math.max(barH, 0)}
+                fill="var(--color-accent, #2563eb)"
+                opacity="0.75"
+                rx="2"
+                aria-label={`${dayLabel(p.date)}: ${p.stepCount.toLocaleString()} steps`}
+              />
+              <text
+                x={barX + barW / 2}
+                y={CHART_H - 4}
+                textAnchor="middle"
+                fontSize="10"
+                fill="currentColor"
+                className={styles.chartAxisLabel}
+              >
+                {dayLabel(p.date)}
+              </text>
+            </g>
+          );
+        })}
+        {/* goal reference line */}
+        {goalY !== null && (
+          <>
+            <line
+              x1={PAD.left}
+              y1={goalY}
+              x2={PAD.left + PLOT_W}
+              y2={goalY}
+              stroke="#ef4444"
+              strokeWidth="1.5"
+              strokeDasharray="4 3"
+            />
+            <text
+              x={PAD.left + PLOT_W - 2}
+              y={goalY - 4}
+              textAnchor="end"
+              fontSize="10"
+              fill="#ef4444"
+            >
+              Goal
+            </text>
+          </>
+        )}
+      </svg>
+    </div>
   );
 }
 
@@ -232,6 +494,31 @@ export function DashboardPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section aria-labelledby="trends-heading" className={styles.trendsSection}>
+        <h2 id="trends-heading">Trends</h2>
+        <div className={styles.trendsGrid}>
+          <div className={styles.chartCard}>
+            <h3 className={styles.chartTitle}>{"Today's Heart Rate Fluctuations"}</h3>
+            {dashLoading ? (
+              <div className={styles.chartEmpty} aria-busy="true">Loading…</div>
+            ) : dashError ? null : (
+              <HeartRateChart points={dashboard!.trends?.heartRateToday ?? []} />
+            )}
+          </div>
+          <div className={styles.chartCard}>
+            <h3 className={styles.chartTitle}>{"This Week's Step Activity"}</h3>
+            {dashLoading ? (
+              <div className={styles.chartEmpty} aria-busy="true">Loading…</div>
+            ) : dashError ? null : (
+              <StepsChart
+                points={dashboard!.trends?.steps7d ?? []}
+                goal={dashboard!.trends?.stepsGoal ?? null}
+              />
+            )}
+          </div>
+        </div>
       </section>
 
       <section aria-labelledby="insights-heading" className={styles.infoGrid}>

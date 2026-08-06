@@ -1,3 +1,4 @@
+import "./db.js";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import express from "express";
@@ -13,6 +14,7 @@ import { dashboardRouter } from "./api/dashboardRoutes.js";
 import { buildAuthRouter } from "./routes/auth.js";
 import { profileRouter } from "./routes/profile.js";
 import { privacyRouter } from "./routes/privacy.js";
+import { health } from "./health.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
 
@@ -24,7 +26,7 @@ app.use(express.json());
 app.use(correlationIdMiddleware);
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json(health());
 });
 
 app.use("/api/v1/auth", buildAuthRouter(config.jwtSecret));

@@ -105,6 +105,71 @@
   color: #6b7280;
 }
 
+.trendsSection {
+  display: block;
+}
+
+.trendsSection h2 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.trendsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.chartCard {
+  background-color: var(--color-bg-white);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+}
+
+.chartTitle {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.chartWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.chartMeta {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #6b7280);
+  font-weight: 500;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  color: var(--color-text-secondary, #6b7280);
+  display: block;
+}
+
+.chartAxisLabel {
+  font-family: inherit;
+}
+
+.chartEmpty {
+  padding: 1rem 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #6b7280);
+  font-style: italic;
+}
+
+.chartEmpty p {
+  margin: 0;
+}
+
 .infoGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
