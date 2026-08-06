@@ -12,6 +12,7 @@ import { GoalsProgressPage } from "./pages/GoalsProgressPage.js";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage.js";
 import { OnboardingPage } from "./pages/OnboardingPage.js";
+import { OnboardingProfilePage } from "./pages/OnboardingProfilePage.js";
 import { PartnersServicesPage } from "./pages/PartnersServicesPage.js";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { RegisterPage } from "./pages/RegisterPage.js";
@@ -33,6 +34,7 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/onboarding/profile" element={<OnboardingProfilePage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/partners-services" element={<PartnersServicesPage />} />

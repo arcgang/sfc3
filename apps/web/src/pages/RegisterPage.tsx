@@ -66,7 +66,7 @@ export function RegisterPage() {
         method: "POST",
         body: JSON.stringify({ mode: "register", fullName, email, password }),
       });
-      navigate("/onboarding");
+      navigate("/onboarding/profile");
     } catch (err: unknown) {
       if (err instanceof Error) {
         try {

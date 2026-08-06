@@ -132,9 +132,9 @@ test("client-side validation errors prevent apiFetch from being called", () => {
   expect(spy).not.toHaveBeenCalled();
 });
 
-// ── Successful registration navigates to /onboarding ─────────────────────────
+// ── Successful registration navigates to /onboarding/profile ─────────────────
 
-test("valid form with mocked 201 response navigates to /onboarding", async () => {
+test("valid form with mocked 201 response navigates to /onboarding/profile", async () => {
   mockApiFetch.implementation = (_path, _opts) =>
     Promise.resolve({ data: { id: "abc", email: "alice@example.com" } });
 
@@ -145,7 +145,7 @@ test("valid form with mocked 201 response navigates to /onboarding", async () =>
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: "securePass1" } });
   fireEvent.submit(screen.getByRole("button", { name: "Create Account" }).closest("form")!);
 
-  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/onboarding"));
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/onboarding/profile"));
 });
 
 test("valid form POSTs to /auth/session with mode=register", async () => {
