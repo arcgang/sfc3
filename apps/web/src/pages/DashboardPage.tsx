@@ -166,14 +166,23 @@ function MetricCard({ card }: MetricCardProps) {
     );
   }
 
+  const badgeVariant = card.badge.toLowerCase().includes("monitor") ? "monitor"
+    : card.badge.toLowerCase().includes("elevated") ? "elevated"
+    : card.badge.toLowerCase().includes("high") ? "high"
+    : undefined;
+
   return (
     <li className={styles.metricCard} data-card-id={card.id}>
       <span className={styles.metricLabel}>{label}</span>
-      <strong className={styles.metricValue}>
-        {formatValue(card)}
-        {card.unit === "mmHg" || card.id === "BloodPressure" ? "" : ""}
-      </strong>
-      {card.badge && <span className={styles.metricStatus}>{card.badge}</span>}
+      <strong className={styles.metricValue}>{formatValue(card)}</strong>
+      {card.badge && (
+        <span
+          className={styles.metricStatus}
+          {...(badgeVariant ? { "data-badge-variant": badgeVariant } : {})}
+        >
+          {card.badge}
+        </span>
+      )}
     </li>
   );
 }
@@ -291,13 +300,13 @@ function HeartRateChart({ points }: HeartRateChartProps) {
           stroke="currentColor" strokeOpacity="0.2" strokeWidth="1"
         />
         {/* line */}
-        <path d={d} fill="none" stroke="var(--color-accent, #2563eb)" strokeWidth="2" strokeLinejoin="round" />
+        <path d={d} fill="none" stroke="var(--color-danger)" strokeWidth="2" strokeLinejoin="round" />
         {/* current dot */}
         <circle
           cx={scaleX(points.length - 1, points.length)}
           cy={scaleY(currentBpm, minBpm, maxBpm)}
           r="4"
-          fill="var(--color-accent, #2563eb)"
+          fill="var(--color-danger)"
         />
       </svg>
     </div>
@@ -375,8 +384,8 @@ function StepsChart({ points, goal }: StepsChartProps) {
                 y={barY}
                 width={barW}
                 height={Math.max(barH, 0)}
-                fill="var(--color-accent, #2563eb)"
-                opacity="0.75"
+                fill="var(--color-teal-500)"
+                opacity="0.85"
                 rx="2"
                 aria-label={`${dayLabel(p.date)}: ${p.stepCount.toLocaleString()} steps`}
               />
@@ -401,7 +410,7 @@ function StepsChart({ points, goal }: StepsChartProps) {
               y1={goalY}
               x2={PAD.left + PLOT_W}
               y2={goalY}
-              stroke="#ef4444"
+              stroke="var(--color-gray-500)"
               strokeWidth="1.5"
               strokeDasharray="4 3"
             />
@@ -410,7 +419,7 @@ function StepsChart({ points, goal }: StepsChartProps) {
               y={goalY - 4}
               textAnchor="end"
               fontSize="10"
-              fill="#ef4444"
+              fill="var(--color-gray-500)"
             >
               Goal
             </text>
@@ -491,12 +500,12 @@ function SleepChart({ points }: SleepChartProps) {
         })}
         <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
         <line x1={PAD.left} y1={PAD.top + PLOT_H} x2={PAD.left + PLOT_W} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
-        <path d={d} fill="none" stroke="var(--color-accent, #2563eb)" strokeWidth="2" strokeLinejoin="round" />
+        <path d={d} fill="none" stroke="var(--color-teal-500)" strokeWidth="2" strokeLinejoin="round" />
         <circle
           cx={scaleX(points.length - 1, points.length)}
           cy={scaleY(points[points.length - 1]!.minutes, minM, maxM)}
           r="4"
-          fill="var(--color-accent, #2563eb)"
+          fill="var(--color-teal-500)"
         />
       </svg>
     </div>
@@ -571,12 +580,12 @@ function WeightChart({ points }: WeightChartProps) {
         })}
         <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
         <line x1={PAD.left} y1={PAD.top + PLOT_H} x2={PAD.left + PLOT_W} y2={PAD.top + PLOT_H} stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
-        <path d={d} fill="none" stroke="var(--color-accent, #2563eb)" strokeWidth="2" strokeLinejoin="round" />
+        <path d={d} fill="none" stroke="var(--color-teal-500)" strokeWidth="2" strokeLinejoin="round" />
         <circle
           cx={scaleX(points.length - 1, points.length)}
           cy={scaleY(points[points.length - 1]!.kg, minKg, maxKg)}
           r="4"
-          fill="var(--color-accent, #2563eb)"
+          fill="var(--color-teal-500)"
         />
       </svg>
     </div>
@@ -856,7 +865,12 @@ export function DashboardPage() {
           ) : (
             <ul className={styles.alertList} aria-label="Recent alerts">
               {dashAlerts.map((alert) => (
-                <li key={alert.id} className={styles.alertItem} data-alert-id={alert.id}>
+                <li
+                  key={alert.id}
+                  className={styles.alertItem}
+                  data-alert-id={alert.id}
+                  data-priority={alert.priority}
+                >
                   <span aria-hidden="true">{alert.priority === "high" ? "🔴" : "⚠️"}</span>
                   <div>
                     <p>{alert.message}</p>
@@ -896,15 +910,15 @@ export function DashboardPage() {
           </p>
         ) : (
           <ul className={styles.goalCountList} aria-label="Goals summary" aria-busy={goalsLoading}>
-            <li className={styles.goalCountItem}>
+            <li className={styles.goalCountItem} data-status="on_track">
               <strong className={styles.goalCountValue}>{goalsLoading ? "—" : counts.onTrack}</strong>
               <span>On track</span>
             </li>
-            <li className={styles.goalCountItem}>
+            <li className={styles.goalCountItem} data-status="at_risk">
               <strong className={styles.goalCountValue}>{goalsLoading ? "—" : counts.atRisk}</strong>
               <span>At risk</span>
             </li>
-            <li className={styles.goalCountItem}>
+            <li className={styles.goalCountItem} data-status="missed">
               <strong className={styles.goalCountValue}>{goalsLoading ? "—" : counts.missed}</strong>
               <span>Missed</span>
             </li>
