@@ -143,12 +143,35 @@ function renderViaApp(path = "/dashboard") {
   );
 }
 
+function makeRecsResponse(recs: Array<{ id: string; content: string; status: string }> = []) {
+  return { data: recs };
+}
+
+const DEFAULT_RECS = [
+  {
+    id: "rec-1",
+    content: "Try a 10-minute walk after lunch to boost your afternoon energy and help reach your daily step goal.",
+    status: "active",
+  },
+  {
+    id: "rec-2",
+    content: "Consider setting a consistent bedtime alarm for 10:30 PM to maintain your improved sleep schedule.",
+    status: "active",
+  },
+  {
+    id: "rec-3",
+    content: "Your activity level is high today. Remember to stay hydrated by drinking water regularly throughout the day, especially during and after exercise.",
+    status: "active",
+  },
+];
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
 });
@@ -958,6 +981,7 @@ test("after re-fetch failure, metric cards remain visible", async () => {
   let callCount = 0;
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
     callCount += 1;
     if (callCount === 1) return Promise.resolve(makeDashboardResponse());
     return Promise.reject(new Error("Network error"));
@@ -972,4 +996,91 @@ test("after re-fetch failure, metric cards remain visible", async () => {
   });
   const list = screen.getByRole("list", { name: "Health metrics" });
   expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
+});
+
+// ── Inline recommendation ─────────────────────────────────────────────────────
+
+test("renders exactly one inline recommendation when API returns active items", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  await screen.findByRole("heading", { name: "Personalized Recommendation", level: 2 });
+
+  const section = screen.getByRole("region", { name: "Personalized Recommendation" });
+  expect(within(section).getAllByRole("button", { name: "Mark as Done" }).length).toBe(1);
+  expect(within(section).getAllByRole("button", { name: "Dismiss" }).length).toBe(1);
+});
+
+test("inline recommendation shows first active item's text", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendation", level: 2 });
+  const section = screen.getByRole("region", { name: "Personalized Recommendation" });
+  expect(
+    within(section).getByText(
+      "Try a 10-minute walk after lunch to boost your afternoon energy and help reach your daily step goal.",
+    ),
+  ).toBeTruthy();
+});
+
+test("inline recommendation is absent and no error shown when API returns empty array", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  await waitFor(() => {
+    expect(screen.queryByRole("heading", { name: "Personalized Recommendation", level: 2 })).toBeNull();
+  });
+  expect(document.querySelector("[role='alert']")).toBeNull();
+});
+
+test("Heart Rate card is still visible when inline recommendation is shown", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendation", level: 2 });
+
+  const list = screen.getByRole("list", { name: "Health metrics" });
+  const cards = within(list).getAllByRole("listitem");
+  const hrCard = cards.find((c) => c.getAttribute("data-card-id") === "HeartRate");
+  expect(hrCard).toBeTruthy();
+});
+
+test("inline recommendation section renders after Goals section in the document", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Personalized Recommendation", level: 2 });
+
+  const allH2s = screen.getAllByRole("heading", { level: 2 });
+  const goalsIdx = allH2s.findIndex((h) => h.textContent === "Goals");
+  const recIdx = allH2s.findIndex((h) => h.textContent === "Personalized Recommendation");
+  expect(goalsIdx).toBeGreaterThanOrEqual(0);
+  expect(recIdx).toBeGreaterThan(goalsIdx);
+});
+
+test("calls GET /recommendations on mount", async () => {
+  renderDashboardPage();
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/recommendations",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
 });
