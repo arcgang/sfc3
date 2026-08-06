@@ -22,6 +22,83 @@ type ProfileBody = z.infer<typeof profileSchema>;
 
 export const profileRouter = Router();
 
+profileRouter.get(
+  "/",
+  (req: Request, res: Response, next: NextFunction): void => {
+    const correlationId =
+      typeof res.locals["correlationId"] === "string"
+        ? res.locals["correlationId"]
+        : "";
+
+    const rawUser = res.locals["user"];
+    if (
+      typeof rawUser !== "object" ||
+      rawUser === null ||
+      typeof (rawUser as Record<string, unknown>)["sub"] !== "string"
+    ) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: {
+          type: "AUTH_TOKEN_INVALID",
+          details: [{ code: "AUTH_TOKEN_INVALID", message: "Invalid token payload." }],
+        },
+      };
+      res.status(401).json(body);
+      return;
+    }
+    const userId = (rawUser as { sub: string }).sub;
+    const now = new Date().toISOString();
+
+    try {
+      const db = getDatabase();
+      const row = db
+        .prepare(
+          `SELECT id, user_id, full_name, date_of_birth, gender, wellness_preferences,
+                  persona_mode, created_at, updated_at
+             FROM profiles WHERE user_id = ?`,
+        )
+        .get(userId) as {
+        id: string;
+        user_id: string;
+        full_name: string;
+        date_of_birth: string | null;
+        gender: string | null;
+        wellness_preferences: string;
+        persona_mode: string;
+        created_at: string;
+        updated_at: string;
+      } | undefined;
+
+      if (!row) {
+        res.status(200).json({
+          meta: { correlationId, timestamp: now },
+          data: { profile: null },
+        });
+        return;
+      }
+
+      res.status(200).json({
+        meta: { correlationId, timestamp: now },
+        data: {
+          profile: {
+            id: row.id,
+            userId: row.user_id,
+            fullName: row.full_name,
+            dateOfBirth: row.date_of_birth,
+            gender: row.gender,
+            wellnessPreferences: JSON.parse(row.wellness_preferences) as string[],
+            personaMode: row.persona_mode,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+          },
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 profileRouter.put(
   "/",
   validateBody(profileSchema),

@@ -4,14 +4,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import styles from "./OnboardingPage.module.css";
 
-type DashboardMode = "default" | "fitness" | "chronic_care_aware";
+type PersonaMode = "default" | "fitness" | "chronic_care_aware";
 
 interface PutProfileBody {
   fullName: string;
   dateOfBirth?: string;
   gender?: string;
   wellnessPreferences?: string[];
-  dashboardMode?: DashboardMode;
+  personaMode?: PersonaMode;
 }
 
 const WELLNESS_PREFS = [
@@ -22,7 +22,7 @@ const WELLNESS_PREFS = [
   { value: "goals", label: "Goal setting and progress tracking", id: "pref-goals" },
 ] as const;
 
-const DASHBOARD_MODES: { value: DashboardMode; title: string; desc: string }[] = [
+const DASHBOARD_MODES: { value: PersonaMode; title: string; desc: string }[] = [
   {
     value: "default",
     title: "Everyday Wellness",
@@ -46,7 +46,7 @@ export function OnboardingProfilePage() {
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
-  const [dashboardMode, setDashboardMode] = useState<DashboardMode>("default");
+  const [dashboardMode, setDashboardMode] = useState<PersonaMode>("default");
   const [selectedPrefs, setSelectedPrefs] = useState<Set<string>>(
     new Set(["activity", "sleep"]),
   );
@@ -81,7 +81,7 @@ export function OnboardingProfilePage() {
     const body: PutProfileBody = {
       fullName: fullName.trim(),
       wellnessPreferences: Array.from(selectedPrefs),
-      dashboardMode,
+      personaMode: dashboardMode,
     };
     if (dateOfBirth) body.dateOfBirth = dateOfBirth;
     if (gender) body.gender = gender;
