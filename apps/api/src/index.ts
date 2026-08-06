@@ -35,6 +35,7 @@ app.use("/api/v1/devices", requireAuth, devicesRouter);
 app.use("/api/v1/alerts", requireAuth, alertsRouter);
 app.use("/api/v1/goals", requireAuth, goalsRouter);
 app.use("/api/v1/dashboard", requireAuth, dashboardRouter);
+app.use("/api/v1/profile", requireAuth, profileRouter);
 
 app.use(errorHandler);
 
