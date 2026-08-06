@@ -11,6 +11,7 @@ import {
   type DeviceSyncStatus,
   type HealthMetrics,
 } from "../dashboard/dashboardHelpers.js";
+import { attemptMockRefresh } from "../routes/dashboard.js";
 
 export const dashboardRouter = Router();
 
@@ -72,6 +73,14 @@ dashboardRouter.get("/", (req: Request, res: Response): void => {
     data.devices.length > 0
       ? Math.min(...data.devices.map((d) => d.staleAfterHours))
       : DEFAULT_STALE_THRESHOLD;
+
+  // Trigger a mock refresh attempt for each stale device (logs sync_started + sync_failed).
+  // last_successful_sync_at and health_records are not modified on failure.
+  for (const d of data.devices) {
+    if (d.stale) {
+      attemptMockRefresh(`${userId}/${d.deviceType}`, d.deviceType, correlationId);
+    }
+  }
 
   const deviceSyncStatuses: DeviceSyncStatus[] = data.devices.map((d) => ({
     deviceType: d.deviceType,
