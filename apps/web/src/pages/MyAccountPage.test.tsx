@@ -181,6 +181,19 @@ test("radio for loaded personaMode=fitness is checked", async () => {
   });
 });
 
+test("radio for loaded personaMode=chronic_care_aware is checked", async () => {
+  mockApiFetch.implementation = () =>
+    Promise.resolve({
+      data: { profile: { fullName: "Alex Johnson", personaMode: "chronic_care_aware" } },
+    });
+  renderPage();
+
+  await waitFor(() => {
+    const radio = screen.getByRole("radio", { name: /Assisted \/ Chronic-Care-Aware/i }) as HTMLInputElement;
+    expect(radio.checked).toBe(true);
+  });
+});
+
 // ── Saving mode calls PUT /profile ────────────────────────────────────────────
 
 test("selecting a mode calls PUT /profile with the new personaMode", async () => {
