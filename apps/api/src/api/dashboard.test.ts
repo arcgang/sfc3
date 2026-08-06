@@ -708,4 +708,97 @@ describe("GET /api/v1/dashboard — trends", () => {
     const body = res.body as { data: { trends: { stepsGoal: number } } };
     expect(body.data.trends.stepsGoal).toBe(10000);
   });
+
+  it("returns trends.sleepMinutes7d and trends.weight7d as empty arrays when no health records exist", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-empty-sleep-weight-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: {
+        trends: {
+          sleepMinutes7d: unknown[];
+          weight7d: unknown[];
+        };
+      };
+    };
+    expect(body.data.trends.sleepMinutes7d).toEqual([]);
+    expect(body.data.trends.weight7d).toEqual([]);
+  });
+
+  it("returns sleepMinutes7d with summed sleep_minutes per calendar day", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-sleep-1";
+    const connId = "conn-trends-sleep-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+
+    const day1 = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const day2 = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    seedHealthRecord(db, userId, connId, "smartwatch", "sleep_minutes", 420, `${day1}T06:00:00.000Z`);
+    seedHealthRecord(db, userId, connId, "smartwatch", "sleep_minutes", 30, `${day1}T14:00:00.000Z`);
+    seedHealthRecord(db, userId, connId, "smartwatch", "sleep_minutes", 480, `${day2}T06:00:00.000Z`);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: { trends: { sleepMinutes7d: Array<{ date: string; minutes: number }> } };
+    };
+    const days = body.data.trends.sleepMinutes7d;
+    const d1 = days.find((d) => d.date === day1);
+    const d2 = days.find((d) => d.date === day2);
+
+    // day1 sums 420 + 30 = 450
+    expect(d1?.minutes).toBe(450);
+    // day2 is 480
+    expect(d2?.minutes).toBe(480);
+  });
+
+  it("returns weight7d with averaged weight_kg per calendar day from smart_scale", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-weight-1";
+    const connId = "conn-trends-weight-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smart_scale", connId, RECENT_SYNC_AT);
+
+    const day1 = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const day2 = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    seedHealthRecord(db, userId, connId, "smart_scale", "weight_kg", 68.4, `${day1}T08:00:00.000Z`);
+    seedHealthRecord(db, userId, connId, "smart_scale", "weight_kg", 68.2, `${day2}T08:00:00.000Z`);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: { trends: { weight7d: Array<{ date: string; kg: number }> } };
+    };
+    const days = body.data.trends.weight7d;
+    const d1 = days.find((d) => d.date === day1);
+    const d2 = days.find((d) => d.date === day2);
+
+    expect(d1?.kg).toBe(68.4);
+    expect(d2?.kg).toBe(68.2);
+  });
 });
