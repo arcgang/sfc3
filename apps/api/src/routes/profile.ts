@@ -5,7 +5,14 @@ import { getDatabase } from "../db/connection.js";
 import { validateBody } from "../middleware/validate.js";
 import type { ErrorResponse } from "../types/errors.js";
 
-const PERSONA_MODES = ['default', 'fitness', 'elder_friendly', 'chronic_care_aware'] as const;
+const PERSONA_MODES = [
+  'default',
+  'fitness',
+  'elder_friendly',
+  'chronic_care_aware',
+  'everyday_wellness',
+  'active_fitness',
+] as const;
 type PersonaMode = typeof PERSONA_MODES[number];
 
 const profileSchema = z.object({
@@ -25,23 +32,84 @@ const profileSchema = z.object({
 
 type ProfileBody = z.infer<typeof profileSchema>;
 
+interface ProfileRow {
+  id: string;
+  user_id: string;
+  full_name: string;
+  date_of_birth: string | null;
+  gender: string | null;
+  wellness_preferences: string;
+  persona_mode: string;
+  privacy_policy_accepted: number;
+  data_export_requested: number;
+  data_deletion_requested: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface UserRow {
+  email: string;
+  account_status: string;
+}
+
+function extractUserId(res: Response): string | null {
+  const rawUser = res.locals["user"];
+  if (
+    typeof rawUser !== "object" ||
+    rawUser === null ||
+    typeof (rawUser as Record<string, unknown>)["sub"] !== "string"
+  ) {
+    return null;
+  }
+  return (rawUser as { sub: string }).sub;
+}
+
+function buildProfilePayload(
+  row: ProfileRow,
+  user: UserRow,
+  correlationId: string,
+  now: string,
+) {
+  return {
+    meta: { correlationId, timestamp: now },
+    data: {
+      profile: {
+        id: row.id,
+        userId: row.user_id,
+        fullName: row.full_name,
+        email: user.email,
+        emailVerified: user.account_status === 'active',
+        dateOfBirth: row.date_of_birth,
+        gender: row.gender,
+        wellnessPreferences: JSON.parse(row.wellness_preferences) as string[],
+        personaMode: row.persona_mode,
+        goalPreferences: null,
+        notificationPreferences: null,
+        privacy: {
+          policyAccepted: row.privacy_policy_accepted === 1,
+          dataExportRequested: row.data_export_requested === 1,
+          dataDeletionRequested: row.data_deletion_requested === 1,
+        },
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      },
+    },
+  };
+}
+
 export const profileRouter = Router();
 
-profileRouter.put(
+// GET /api/v1/profile
+profileRouter.get(
   "/",
-  validateBody(profileSchema),
   (req: Request, res: Response, next: NextFunction): void => {
     const correlationId =
       typeof res.locals["correlationId"] === "string"
         ? res.locals["correlationId"]
         : "";
 
-    const rawUser = res.locals["user"];
-    if (
-      typeof rawUser !== "object" ||
-      rawUser === null ||
-      typeof (rawUser as Record<string, unknown>)["sub"] !== "string"
-    ) {
+    const userId = extractUserId(res);
+    if (userId === null) {
       const body: ErrorResponse = {
         meta: { correlationId, timestamp: new Date().toISOString() },
         error: {
@@ -52,7 +120,95 @@ profileRouter.put(
       res.status(401).json(body);
       return;
     }
-    const userId = (rawUser as { sub: string }).sub;
+
+    try {
+      const db = getDatabase();
+      const now = new Date().toISOString();
+
+      const user = db
+        .prepare("SELECT email, account_status FROM users WHERE id = ?")
+        .get(userId) as UserRow | undefined;
+
+      if (!user) {
+        const body: ErrorResponse = {
+          meta: { correlationId, timestamp: now },
+          error: {
+            type: "USER_NOT_FOUND",
+            details: [{ code: "USER_NOT_FOUND", message: "Authenticated user not found." }],
+          },
+        };
+        res.status(404).json(body);
+        return;
+      }
+
+      const row = db
+        .prepare(
+          `SELECT id, user_id, full_name, date_of_birth, gender, wellness_preferences,
+                  persona_mode, privacy_policy_accepted, data_export_requested,
+                  data_deletion_requested, created_at, updated_at
+             FROM profiles WHERE user_id = ?`,
+        )
+        .get(userId) as ProfileRow | undefined;
+
+      if (!row) {
+        // Return defaults when no profile row exists yet
+        res.status(200).json({
+          meta: { correlationId, timestamp: now },
+          data: {
+            profile: {
+              id: null,
+              userId,
+              fullName: null,
+              email: user.email,
+              emailVerified: user.account_status === 'active',
+              dateOfBirth: null,
+              gender: null,
+              wellnessPreferences: [],
+              personaMode: 'everyday_wellness',
+              goalPreferences: null,
+              notificationPreferences: null,
+              privacy: {
+                policyAccepted: false,
+                dataExportRequested: false,
+                dataDeletionRequested: false,
+              },
+              createdAt: null,
+              updatedAt: null,
+            },
+          },
+        });
+        return;
+      }
+
+      res.status(200).json(buildProfilePayload(row, user, correlationId, now));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// PUT /api/v1/profile
+profileRouter.put(
+  "/",
+  validateBody(profileSchema),
+  (req: Request, res: Response, next: NextFunction): void => {
+    const correlationId =
+      typeof res.locals["correlationId"] === "string"
+        ? res.locals["correlationId"]
+        : "";
+
+    const userId = extractUserId(res);
+    if (userId === null) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: {
+          type: "AUTH_TOKEN_INVALID",
+          details: [{ code: "AUTH_TOKEN_INVALID", message: "Invalid token payload." }],
+        },
+      };
+      res.status(401).json(body);
+      return;
+    }
 
     const input = req.body as ProfileBody;
     const now = new Date().toISOString();
@@ -64,6 +220,22 @@ profileRouter.put(
 
     try {
       const db = getDatabase();
+
+      const user = db
+        .prepare("SELECT email, account_status FROM users WHERE id = ?")
+        .get(userId) as UserRow | undefined;
+
+      if (!user) {
+        const body: ErrorResponse = {
+          meta: { correlationId, timestamp: now },
+          error: {
+            type: "USER_NOT_FOUND",
+            details: [{ code: "USER_NOT_FOUND", message: "Authenticated user not found." }],
+          },
+        };
+        res.status(404).json(body);
+        return;
+      }
 
       const existing = db
         .prepare("SELECT id FROM profiles WHERE user_id = ?")
@@ -129,20 +301,7 @@ profileRouter.put(
                   data_deletion_requested, created_at, updated_at
              FROM profiles WHERE user_id = ?`,
         )
-        .get(userId) as {
-        id: string;
-        user_id: string;
-        full_name: string;
-        date_of_birth: string | null;
-        gender: string | null;
-        wellness_preferences: string;
-        persona_mode: string;
-        privacy_policy_accepted: number;
-        data_export_requested: number;
-        data_deletion_requested: number;
-        created_at: string;
-        updated_at: string;
-      };
+        .get(userId) as ProfileRow;
 
       console.log({
         event: "profile.updated",
@@ -151,27 +310,7 @@ profileRouter.put(
         correlationId,
       });
 
-      res.status(200).json({
-        meta: { correlationId, timestamp: now },
-        data: {
-          profile: {
-            id: row.id,
-            userId: row.user_id,
-            fullName: row.full_name,
-            dateOfBirth: row.date_of_birth,
-            gender: row.gender,
-            wellnessPreferences: JSON.parse(row.wellness_preferences) as string[],
-            personaMode: row.persona_mode,
-            privacy: {
-              policyAccepted: row.privacy_policy_accepted === 1,
-              dataExportRequested: row.data_export_requested === 1,
-              dataDeletionRequested: row.data_deletion_requested === 1,
-            },
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-          },
-        },
-      });
+      res.status(200).json(buildProfilePayload(row, user, correlationId, now));
     } catch (err) {
       next(err);
     }
