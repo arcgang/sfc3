@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import styles from "./DashboardPage.module.css";
@@ -567,6 +567,8 @@ export function DashboardPage() {
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [goalsError, setGoalsError] = useState<string | null>(null);
 
+  const staleRefreshFired = useRef(false);
+
   const fetchDashboard = useCallback((signal?: AbortSignal) => {
     setDashLoading(true);
     setDashError(null);
@@ -591,6 +593,14 @@ export function DashboardPage() {
   }, [fetchDashboard]);
 
   useEffect(() => {
+    if (!dashboard || staleRefreshFired.current) return;
+    if (dashboard.lastSyncStatus.isStale) {
+      staleRefreshFired.current = true;
+      fetchDashboard();
+    }
+  }, [dashboard, fetchDashboard]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     apiFetch<{ data: { goals: GoalSummary[] } }>("/goals", { signal: controller.signal })
@@ -609,10 +619,18 @@ export function DashboardPage() {
     };
   }, []);
 
-  const lastSyncLabel =
-    dashboard?.lastSyncStatus.overallLastSyncAt
-      ? `✓ Last synced: ${relativeTime(dashboard.lastSyncStatus.overallLastSyncAt)}`
-      : dashboard?.lastSyncStatus.stalenessLabel ?? "✓ Last synced: —";
+  const lastSyncLabel = (() => {
+    if (!dashboard) return "✓ Last synced: —";
+    const { overallLastSyncAt, isStale, stalenessLabel } = dashboard.lastSyncStatus;
+    if (isStale) {
+      return overallLastSyncAt
+        ? `⚠ Stale data — last synced: ${relativeTime(overallLastSyncAt)}`
+        : stalenessLabel ?? "⚠ Stale data";
+    }
+    return overallLastSyncAt
+      ? `✓ Last synced: ${relativeTime(overallLastSyncAt)}`
+      : stalenessLabel ?? "✓ Last synced: —";
+  })();
 
   return (
     <div className={styles.page}>
@@ -734,24 +752,51 @@ export function DashboardPage() {
 
         <div>
           <h2>Alerts</h2>
-          <ul className={styles.alertList}>
-            <li className={styles.alertItem}>
-              <span aria-hidden="true">⚠️</span>
-              <div>
-                <strong>Stale Data</strong>
-                <p>Scale data last synced 18 hours ago. Reconnect if no new reading appears today.</p>
-                <Link to="/devices" className={styles.detailsLink}>View Details</Link>
-              </div>
-            </li>
-            <li className={styles.alertItem}>
-              <span aria-hidden="true">🔴</span>
-              <div>
-                <strong>Goal At Risk</strong>
-                <p>{"You're 2,500 steps behind your daily goal. A 20-minute walk can get you back on track."}</p>
-                <Link to="/goals" className={styles.detailsLink}>View Details</Link>
-              </div>
-            </li>
-          </ul>
+          {(() => {
+            const staleDevices = dashboard?.lastSyncStatus.deviceStatuses.filter((d) => d.stale) ?? [];
+            const atRiskGoals = counts.atRisk > 0;
+
+            if (!dashLoading && staleDevices.length === 0 && !atRiskGoals) {
+              return (
+                <p className={styles.noAlerts}>No alerts — all devices are up to date.</p>
+              );
+            }
+
+            return (
+              <ul className={styles.alertList}>
+                {staleDevices.map((d) => {
+                  const deviceLabel = d.deviceType === "smart_scale" ? "Scale" : "Smartwatch";
+                  const syncAgo = relativeTime(d.lastSyncAt);
+                  return (
+                    <li key={d.deviceType} className={styles.alertItem}>
+                      <span aria-hidden="true">⚠️</span>
+                      <div>
+                        <strong>Stale Data</strong>
+                        <p>{`${deviceLabel} data last synced ${syncAgo}. Reconnect if no new reading appears today.`}</p>
+                        <Link to="/devices" className={styles.detailsLink}>View Details</Link>
+                      </div>
+                    </li>
+                  );
+                })}
+                {atRiskGoals && (
+                  <li className={styles.alertItem}>
+                    <span aria-hidden="true">🔴</span>
+                    <div>
+                      <strong>Goal At Risk</strong>
+                      <p>{`${counts.atRisk} goal${counts.atRisk !== 1 ? "s are" : " is"} at risk. Review your progress and adjust your activity.`}</p>
+                      <Link to="/goals" className={styles.detailsLink}>View Details</Link>
+                    </div>
+                  </li>
+                )}
+                {dashLoading && staleDevices.length === 0 && (
+                  <li className={styles.alertItem} aria-busy="true">
+                    <span aria-hidden="true">⚠️</span>
+                    <div><strong>Checking for stale data…</strong></div>
+                  </li>
+                )}
+              </ul>
+            );
+          })()}
         </div>
       </section>
 

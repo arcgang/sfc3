@@ -10,8 +10,11 @@ interface DeviceDto {
   deviceType: "smartwatch" | "smart_scale";
   status: string;
   lastSyncAt: string | null;
+  lastSuccessfulSyncAt: string | null;
   batteryLevel: string | null;
   connectedSince: string;
+  staleAfterHours: number;
+  isStale: boolean;
 }
 
 interface GetConnectionsResponse {
@@ -57,7 +60,8 @@ function deviceIcon(deviceType: DeviceDto["deviceType"]): string {
   return deviceType === "smartwatch" ? "⌚" : "⚖️";
 }
 
-function statusBadge(status: string): string {
+function statusBadge(status: string, isStale: boolean): string {
+  if (isStale && status !== "error" && status !== "disconnected") return "⚠ Stale Data";
   switch (status) {
     case "connected":
       return "✓ Synced";
@@ -148,8 +152,15 @@ function DeviceCard({ device, onSyncSuccess, onReconnectSuccess, onDisconnectSuc
       });
   }
 
-  const isSynced = device.status === "connected";
-  const isStaleOrFailed = device.status === "pending" || device.status === "error" || device.status === "disconnected";
+  const isSynced = device.status === "connected" && !device.isStale;
+  const isStaleOrFailed = device.isStale || device.status === "pending" || device.status === "error" || device.status === "disconnected";
+
+  const statusClass =
+    device.status === "connected" && !device.isStale
+      ? styles.statusSynced
+      : device.isStale || device.status === "pending"
+        ? styles.statusWarning
+        : styles.statusError;
 
   return (
     <li className={styles.card}>
@@ -161,16 +172,8 @@ function DeviceCard({ device, onSyncSuccess, onReconnectSuccess, onDisconnectSuc
           <h2 className={styles.deviceName}>{device.deviceName || device.provider}</h2>
           <span className={styles.typeBadge}>{deviceTypeLabel(device.deviceType)}</span>
         </div>
-        <span
-          className={
-            device.status === "connected"
-              ? styles.statusSynced
-              : device.status === "pending"
-                ? styles.statusWarning
-                : styles.statusError
-          }
-        >
-          {statusBadge(device.status)}
+        <span className={statusClass}>
+          {statusBadge(device.status, device.isStale)}
         </span>
       </div>
 
@@ -321,7 +324,7 @@ export function ConnectedDevicesPage() {
                   setDevices((prev) =>
                     prev.map((d) =>
                       d.id === deviceId
-                        ? { ...d, lastSyncAt: syncedAt, status: "connected" }
+                        ? { ...d, lastSyncAt: syncedAt, lastSuccessfulSyncAt: syncedAt, status: "connected", isStale: false }
                         : d,
                     ),
                   );
