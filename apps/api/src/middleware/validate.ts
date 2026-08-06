@@ -17,7 +17,7 @@ export function validateBody(schema: ZodSchema) {
         : "";
 
     const details = result.error.issues.map((issue) => ({
-      code: issue.code,
+      code: issue.code === "invalid_value" ? "INVALID_ENUM" : issue.code,
       message: issue.message,
       field: issue.path.join("."),
     }));

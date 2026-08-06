@@ -144,8 +144,8 @@ describe("PUT /api/v1/profile — valid payload → 200", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ fullName: "Alice Smith" });
 
-    const body = res.body as { data: { profile: { full_name: string } } };
-    expect(body.data.profile.full_name).toBe("Alice Smith");
+    const body = res.body as { data: { profile: { fullName: string } } };
+    expect(body.data.profile.fullName).toBe("Alice Smith");
   });
 
   it("accepts optional dateOfBirth without error", async () => {
@@ -159,8 +159,8 @@ describe("PUT /api/v1/profile — valid payload → 200", () => {
       .send({ fullName: "Alice Smith", dateOfBirth: "1990-06-15" });
 
     expect(res.status).toBe(200);
-    const body = res.body as { data: { profile: { date_of_birth: string } } };
-    expect(body.data.profile.date_of_birth).toBe("1990-06-15");
+    const body = res.body as { data: { profile: { dateOfBirth: string } } };
+    expect(body.data.profile.dateOfBirth).toBe("1990-06-15");
   });
 
   it("accepts optional gender without error", async () => {
@@ -191,8 +191,8 @@ describe("PUT /api/v1/profile — valid payload → 200", () => {
       .send({ fullName: "Alice Smith", wellnessPreferences: preferences });
 
     expect(res.status).toBe(200);
-    const body = res.body as { data: { profile: { wellness_preferences: string } } };
-    expect(JSON.parse(body.data.profile.wellness_preferences)).toEqual(preferences);
+    const body = res.body as { data: { profile: { wellnessPreferences: string[] } } };
+    expect(body.data.profile.wellnessPreferences).toEqual(preferences);
   });
 });
 
