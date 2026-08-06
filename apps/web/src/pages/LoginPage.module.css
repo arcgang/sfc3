@@ -123,6 +123,21 @@
   margin: 0;
 }
 
+.formError {
+  color: var(--color-danger, #c0392b);
+  background-color: var(--color-danger-bg, #fdecea);
+  border: 1px solid var(--color-danger-border, #f5c6cb);
+  border-radius: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9375rem;
+  margin: 0 0 var(--space-md);
+}
+
+.fieldError {
+  color: var(--color-danger, #c0392b);
+  font-size: 0.875rem;
+}
+
 .signUpRow {
   text-align: center;
   font-size: 0.9375rem;
