@@ -13,6 +13,7 @@ import { goalsRouter } from "./routes/goals.js";
 import { dashboardRouter } from "./api/dashboardRoutes.js";
 import { buildAuthRouter } from "./routes/auth.js";
 import { profileRouter } from "./routes/profile.js";
+import { privacyRouter } from "./routes/privacy.js";
 import { health } from "./health.js";
 
 const config = buildConfig(process.env as Record<string, string | undefined>);
@@ -37,6 +38,7 @@ app.use("/api/v1/devices", requireAuth, devicesRouter);
 app.use("/api/v1/alerts", requireAuth, alertsRouter);
 app.use("/api/v1/goals", requireAuth, goalsRouter);
 app.use("/api/v1/dashboard", requireAuth, dashboardRouter);
+app.use("/api/v1/privacy", requireAuth, privacyRouter);
 
 app.use(errorHandler);
 
