@@ -425,3 +425,154 @@ describe("GET /api/v1/dashboard — response envelope", () => {
     expect(typeof body.meta.timestamp).toBe("string");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Trends
+// ---------------------------------------------------------------------------
+
+describe("GET /api/v1/dashboard — trends", () => {
+  it("returns trends.steps7d and trends.heartRateToday as empty arrays when no health records exist", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-empty-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: {
+        trends: {
+          steps7d: unknown[];
+          heartRateToday: unknown[];
+          stepsGoal: null;
+        };
+      };
+    };
+    expect(body.data.trends.steps7d).toEqual([]);
+    expect(body.data.trends.heartRateToday).toEqual([]);
+    expect(body.data.trends.stepsGoal).toBeNull();
+  });
+
+  it("returns steps7d aggregated by calendar day with the supplied step_count value", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-steps-1";
+    const connId = "conn-trends-sw-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+
+    // Two different days within the last 7 days
+    const day1 = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const day2 = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    seedHealthRecord(db, userId, connId, "smartwatch", "step_count", 5000, `${day1}T10:00:00.000Z`);
+    seedHealthRecord(db, userId, connId, "smartwatch", "step_count", 8000, `${day1}T18:00:00.000Z`);
+    seedHealthRecord(db, userId, connId, "smartwatch", "step_count", 9500, `${day2}T18:00:00.000Z`);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: { trends: { steps7d: Array<{ date: string; stepCount: number }> } };
+    };
+    const days = body.data.trends.steps7d;
+    const d1 = days.find((d) => d.date === day1);
+    const d2 = days.find((d) => d.date === day2);
+
+    // day1 should aggregate to 8000 (MAX of 5000 and 8000)
+    expect(d1?.stepCount).toBe(8000);
+    // day2 should be 9500
+    expect(d2?.stepCount).toBe(9500);
+  });
+
+  it("returns heartRateToday with bpm values from today's heart_rate_bpm records", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-hr-1";
+    const connId = "conn-trends-hr-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+
+    const todayMorning = new Date();
+    todayMorning.setUTCHours(8, 0, 0, 0);
+    const todayNoon = new Date();
+    todayNoon.setUTCHours(12, 0, 0, 0);
+
+    seedHealthRecord(db, userId, connId, "smartwatch", "heart_rate_bpm", 68, todayMorning.toISOString());
+    seedHealthRecord(db, userId, connId, "smartwatch", "heart_rate_bpm", 85, todayNoon.toISOString());
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: { trends: { heartRateToday: Array<{ recordedAt: string; bpm: number }> } };
+    };
+    expect(body.data.trends.heartRateToday.length).toBe(2);
+    expect(body.data.trends.heartRateToday[0]!.bpm).toBe(68);
+    expect(body.data.trends.heartRateToday[1]!.bpm).toBe(85);
+  });
+
+  it("excludes heart_rate_bpm records from previous days in heartRateToday", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-hr-2";
+    const connId = "conn-trends-hr-2";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    seedHealthRecord(db, userId, connId, "smartwatch", "heart_rate_bpm", 70, `${yesterday}T10:00:00.000Z`);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      data: { trends: { heartRateToday: unknown[] } };
+    };
+    // Yesterday's record must not appear in today's heart rate
+    expect(body.data.trends.heartRateToday).toEqual([]);
+  });
+
+  it("returns stepsGoal from active steps_daily goal", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-trends-goal-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    const { randomUUID } = require("node:crypto");
+    db.prepare(
+      `INSERT INTO goals (id, user_id, goal_type, cadence, status, target_value, target_unit, start_date)
+       VALUES (?, ?, 'steps_daily', 'daily', 'active', ?, 'steps', '2026-01-01')`,
+    ).run(randomUUID(), userId, 10000);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: { trends: { stepsGoal: number } } };
+    expect(body.data.trends.stepsGoal).toBe(10000);
+  });
+});
