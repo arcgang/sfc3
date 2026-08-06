@@ -1,6 +1,13 @@
 import { Link } from "react-router-dom";
 import styles from "./HomePage.module.css";
 
+/*
+ * Preconnect placeholder:
+ * Add <link rel="preconnect" href="..."> in index.html (or the root layout)
+ * if an external resource (font CDN, API host) is ever introduced here,
+ * to avoid render-blocking network round-trips on first paint.
+ */
+
 const HEALTH_DOMAINS = [
   {
     id: "activity",
@@ -82,6 +89,7 @@ export function HomePage() {
       <main>
         <section className={styles.hero} aria-labelledby="hero-heading">
           <div className={styles.heroContent}>
+            {/* LCP element: this h1 is plain text with no images or web fonts; it renders from the first CSS paint with no external fetch. */}
             <h1 id="hero-heading" className={styles.heroHeading}>
               One place for your complete wellness picture.
             </h1>
@@ -116,7 +124,8 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className={styles.statisticsSection} aria-label="Statistics">
+        <section className={styles.statisticsSection} aria-labelledby="statistics-heading">
+          <h2 id="statistics-heading" className="sr-only">Statistics</h2>
           <ul className={styles.statsGrid}>
             {STATS.map((stat) => (
               <li key={stat.id} className={styles.statItem}>
