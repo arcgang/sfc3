@@ -102,12 +102,21 @@ export function OnboardingProfilePage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <p className={styles.logo}>W WellnessHub</p>
+        <div className={styles.logo}>
+          <div className={styles.logoIcon}>W</div>
+          <span className={styles.logoText}>WellnessHub</span>
+        </div>
 
-        <h1 className={styles.heading}>Welcome to WellnessHub!</h1>
-        <p className={styles.subheading}>
-          Let's set up your profile to personalize your wellness experience
-        </p>
+        <div className={styles.header}>
+          <h1 className={styles.heading}>Welcome to WellnessHub!</h1>
+          <p className={styles.subheading}>
+            Let's set up your profile to personalize your wellness experience
+          </p>
+        </div>
+
+        <div className={styles.progressBar}>
+          <div className={styles.progressFill} />
+        </div>
 
         {formError && (
           <p role="alert" className={styles.formError}>
@@ -168,8 +177,8 @@ export function OnboardingProfilePage() {
 
           {/* Dashboard Mode */}
           <div className={styles.modeSection}>
-            <p className={styles.modeSectionLabel}>Dashboard Mode *</p>
-            <p className={styles.prefsSubLabel}>
+            <span className={styles.modeSectionLabel}>Dashboard Mode *</span>
+            <p className={styles.modeSubLabel}>
               Choose how your dashboard emphasizes health information
             </p>
             <div className={styles.modeOptions} role="radiogroup" aria-label="Dashboard Mode">
@@ -182,8 +191,11 @@ export function OnboardingProfilePage() {
                     checked={dashboardMode === mode.value}
                     onChange={() => setDashboardMode(mode.value)}
                   />
-                  <div>
-                    <span className={styles.modeOptionTitle}>{mode.title}</span>
+                  <div className={styles.modeRadio}>
+                    <div className={styles.modeRadioDot} />
+                  </div>
+                  <div className={styles.modeOptionBody}>
+                    <div className={styles.modeOptionTitle}>{mode.title}</div>
                     <p className={styles.modeOptionDesc}>{mode.desc}</p>
                   </div>
                 </label>
@@ -193,7 +205,7 @@ export function OnboardingProfilePage() {
 
           {/* Wellness Preferences */}
           <div className={styles.prefsSection}>
-            <p className={styles.prefsSectionLabel}>Wellness Preferences</p>
+            <span className={styles.prefsSectionLabel}>Wellness Preferences</span>
             <p className={styles.prefsSubLabel}>
               Select areas you'd like to focus on
             </p>
@@ -214,20 +226,19 @@ export function OnboardingProfilePage() {
             </ul>
           </div>
 
-          <button
-            type="submit"
-            className={styles.submitButton}
-            disabled={submitting}
-          >
-            {submitting ? "Saving…" : "Next: Connect Devices"}
-          </button>
+          <div className={styles.buttonGroup}>
+            <Link to="/onboarding/devices" className={styles.skipButton}>
+              Skip for now
+            </Link>
+            <button
+              type="submit"
+              className={styles.submitButton}
+              disabled={submitting}
+            >
+              {submitting ? "Saving…" : "Next: Connect Devices"}
+            </button>
+          </div>
         </form>
-
-        <div className={styles.skipRow}>
-          <Link to="/onboarding/devices" className={styles.skipButton}>
-            Skip for now
-          </Link>
-        </div>
       </div>
     </div>
   );
