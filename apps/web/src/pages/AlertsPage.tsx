@@ -23,6 +23,11 @@ interface Recommendation {
   status: string;
 }
 
+interface NudgeActionResult {
+  dismissed: Recommendation;
+  next_nudge: Recommendation | null;
+}
+
 // ── Insight category config ───────────────────────────────────────────────────
 
 type InsightCategory =
@@ -244,32 +249,40 @@ export function AlertsPage() {
       });
   }
 
-  function fetchRecs() {
-    apiFetch<{ data: Recommendation[] }>("/recommendations/nudges")
-      .then((res) => {
-        const items = Array.isArray(res.data) ? res.data : [];
-        setRecs(items.filter((r) => r.status === "active"));
-      })
-      .catch(() => {
-        setRecs([]);
-      });
+  function applyNudgeResult(id: string, result: NudgeActionResult) {
+    setRecs((prev) => {
+      const without = prev.filter((r) => r.id !== id);
+      if (result.next_nudge && result.next_nudge.status === "active" && !without.some((r) => r.id === result.next_nudge!.id)) {
+        return [...without, result.next_nudge].slice(0, 3);
+      }
+      return without;
+    });
   }
 
   function handleMarkDone(id: string) {
-    apiFetch<{ data: Recommendation }>(`/recommendations/${id}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "done" }),
+    apiFetch<{ data: NudgeActionResult }>(`/recommendations/nudges/${id}/mark-done`, {
+      method: "POST",
     })
-      .then(() => fetchRecs())
-      .catch(() => {});
+      .then((res) => applyNudgeResult(id, res.data))
+      .catch(() => {
+        setRecs((prev) => prev.filter((r) => r.id !== id));
+      });
   }
 
   function handleDismiss(id: string) {
     setRecs((prev) => prev.filter((r) => r.id !== id));
-    apiFetch<{ data: Recommendation }>(`/recommendations/${id}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "dismissed" }),
-    }).catch(() => {});
+    apiFetch<{ data: NudgeActionResult }>(`/recommendations/nudges/${id}/dismiss`, {
+      method: "POST",
+    })
+      .then((res) => {
+        if (res.data.next_nudge && res.data.next_nudge.status === "active") {
+          setRecs((prev) => {
+            if (prev.some((r) => r.id === res.data.next_nudge!.id)) return prev;
+            return [...prev, res.data.next_nudge!].slice(0, 3);
+          });
+        }
+      })
+      .catch(() => {});
   }
 
   return (
