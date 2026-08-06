@@ -209,7 +209,7 @@ export function AlertsPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    apiFetch<{ data: Recommendation[] }>("/recommendations", { signal: controller.signal })
+    apiFetch<{ data: Recommendation[] }>("/recommendations/nudges", { signal: controller.signal })
       .then((res) => {
         const items = Array.isArray(res.data) ? res.data : [];
         setRecs(items.filter((r) => r.status === "active"));
@@ -245,7 +245,7 @@ export function AlertsPage() {
   }
 
   function fetchRecs() {
-    apiFetch<{ data: Recommendation[] }>("/recommendations")
+    apiFetch<{ data: Recommendation[] }>("/recommendations/nudges")
       .then((res) => {
         const items = Array.isArray(res.data) ? res.data : [];
         setRecs(items.filter((r) => r.status === "active"));
