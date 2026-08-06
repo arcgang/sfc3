@@ -1,151 +1,191 @@
-/* text: var(--color-text-primary) on var(--color-bg-white) — contrast ratio ≈ 18.1:1, WCAG AA */
+/* text: var(--color-text-primary) on var(--color-white) — contrast ratio ≈ 18.1:1, WCAG AA */
+
+/* ── Page layout ──────────────────────────────────────────────── */
 
 .pageContent {
   color: var(--color-text-primary);
+  background: var(--color-bg-page);
+  min-height: 100vh;
 }
-
-/* ── Main content ────────────────────────────────────────────── */
 
 .main {
-  padding: var(--space-lg) var(--space-xl);
-  max-width: 56rem;
+  padding: var(--space-10) var(--space-10);
+  max-width: 1000px;
 }
 
+/* ── Page header ──────────────────────────────────────────────── */
+
 .pageHeading {
-  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-size: var(--font-size-28);
   font-weight: 700;
   color: var(--color-text-primary);
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 var(--space-3);
 }
 
 .pageSubheading {
+  font-size: var(--font-size-14);
   color: var(--color-text-secondary);
-  margin: 0 0 var(--space-lg);
-  font-size: 1rem;
+  margin: 0 0 var(--space-10);
 }
 
 /* ── Status / error messages ─────────────────────────────────── */
 
 .statusMessage {
   color: var(--color-text-secondary);
-  font-size: 1rem;
-  margin: var(--space-md) 0;
+  font-size: var(--font-size-16);
+  margin: var(--space-8) 0;
 }
 
 .errorSection {
+  background: var(--color-white);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: var(--space-md);
-  margin-bottom: var(--space-lg);
-  background-color: var(--color-bg-light);
+  border-radius: var(--radius-6);
+  padding: var(--space-9);
+  margin-bottom: var(--space-10);
+  box-shadow: var(--shadow-card);
 }
 
 .errorHeading {
-  font-size: 1.125rem;
+  font-size: var(--font-size-18);
   font-weight: 600;
-  color: var(--color-error);
-  margin: 0 0 var(--space-xs);
+  color: var(--color-danger);
+  margin: 0 0 var(--space-3);
 }
 
 /* ── Device list ─────────────────────────────────────────────── */
 
 .deviceList {
   list-style: none;
-  margin: 0 0 var(--space-lg);
+  margin: 0 0 var(--space-10);
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-8);
 }
 
 /* ── Device card ─────────────────────────────────────────────── */
 
 .card {
+  background: var(--color-white);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: var(--space-md);
-  background-color: var(--color-bg-white);
+  border-radius: var(--radius-6);
+  padding: var(--space-9);
+  box-shadow: var(--shadow-card);
   display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.cardHeader {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
+  gap: var(--space-8);
+  align-items: center;
 }
 
 .deviceIcon {
-  font-size: 2rem;
-  line-height: 1;
+  width: 80px;
+  height: 80px;
+  background: var(--gradient-teal-light);
+  border-radius: var(--radius-6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-40);
   flex-shrink: 0;
+  line-height: 1;
+}
+
+.deviceInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Card header (name + status badge) ──────────────────────── */
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-5);
 }
 
 .cardTitleGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  flex: 1;
+  gap: var(--space-1);
 }
 
 .deviceName {
-  font-size: 1.125rem;
+  font-size: var(--font-size-18);
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
 }
 
 .typeBadge {
-  font-size: 0.8125rem;
+  font-size: var(--font-size-13);
   color: var(--color-text-secondary);
-  font-weight: 500;
 }
 
+/* ── Status chips ──────────────────────────────────────────── */
+
 .statusSynced {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-6);
+  font-size: var(--font-size-13);
+  font-weight: 500;
+  background: var(--color-teal-success-bg);
+  color: var(--color-teal-success-text);
+  white-space: nowrap;
 }
 
 .statusWarning {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-warning);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-6);
+  font-size: var(--font-size-13);
+  font-weight: 500;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  white-space: nowrap;
 }
 
 .statusError {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-error);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-6);
+  font-size: var(--font-size-13);
+  font-weight: 500;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  white-space: nowrap;
 }
 
 /* ── Metadata list ───────────────────────────────────────────── */
 
 .metaList {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
-  gap: var(--space-xs) var(--space-md);
+  margin: 0 0 var(--space-7);
+  display: flex;
+  gap: var(--space-9);
+  flex-wrap: wrap;
 }
 
 .metaRow {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: var(--space-1);
 }
 
 .metaRow dt {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
   color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  margin-bottom: var(--space-1);
 }
 
 .metaRow dd {
-  font-size: 0.9375rem;
+  font-size: var(--font-size-14);
+  font-weight: 500;
   color: var(--color-text-primary);
   margin: 0;
 }
@@ -153,136 +193,173 @@
 /* ── Sync error ──────────────────────────────────────────────── */
 
 .syncError {
-  font-size: 0.875rem;
-  color: var(--color-error);
-  background-color: var(--color-bg-light);
-  border: 1px solid var(--color-error);
-  border-radius: 0.25rem;
-  padding: 0.5rem var(--space-sm);
-  margin: 0;
+  font-size: var(--font-size-14);
+  color: var(--color-danger-text);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-2);
+  padding: var(--space-3) var(--space-5);
+  margin: 0 0 var(--space-3);
 }
 
 /* ── Card actions ────────────────────────────────────────────── */
 
 .cardActions {
   display: flex;
-  gap: var(--space-xs);
+  gap: var(--space-5);
   flex-wrap: wrap;
 }
 
 .btnPrimary {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  background-color: var(--color-accent);
-  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-9);
+  background: var(--color-teal);
+  color: var(--color-white);
   border: none;
-  border-radius: 0.25rem;
-  font-size: 0.9375rem;
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-14);
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
+  transition: background-color 0.2s;
 }
 
 .btnPrimary:hover {
-  background-color: var(--color-bg-teal);
+  background: var(--color-teal-dark);
 }
 
 .btnPrimary:focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid var(--color-teal);
   outline-offset: 2px;
 }
 
 .btnSecondary {
-  padding: 0.5rem 1rem;
-  background-color: var(--color-bg-white);
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent);
-  border-radius: 0.25rem;
-  font-size: 0.9375rem;
+  padding: var(--space-3) var(--space-7);
+  background: var(--color-white);
+  color: var(--color-teal);
+  border: 1px solid var(--color-teal);
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-14);
   font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .btnSecondary:hover {
-  background-color: var(--color-bg-light);
+  background: var(--color-teal-bg);
 }
 
 .btnSecondary:focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid var(--color-teal);
   outline-offset: 2px;
 }
 
 .btnDanger {
-  padding: 0.5rem 1rem;
-  background-color: var(--color-bg-white);
-  color: var(--color-error);
-  border: 1px solid var(--color-error);
-  border-radius: 0.25rem;
-  font-size: 0.9375rem;
+  padding: var(--space-3) var(--space-7);
+  background: var(--color-white);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-14);
   font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .btnDanger:hover {
-  background-color: var(--color-bg-light);
+  background: var(--color-danger-bg-alt);
 }
 
 .btnDanger:focus-visible {
-  outline: 3px solid var(--color-error);
+  outline: 3px solid var(--color-danger);
   outline-offset: 2px;
 }
 
 /* ── Add another device section ──────────────────────────────── */
 
 .addDeviceSection {
+  background: var(--color-white);
   border: 2px dashed var(--color-border);
-  border-radius: var(--radius-card);
-  padding: var(--space-lg);
+  border-radius: var(--radius-6);
+  padding: var(--space-10);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-3);
 }
 
 .addIcon {
-  font-size: 2rem;
+  width: 64px;
+  height: 64px;
+  background: var(--color-teal-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-32);
   font-weight: 300;
-  color: var(--color-text-secondary);
+  color: var(--color-teal);
   line-height: 1;
+  flex-shrink: 0;
+  margin-bottom: var(--space-3);
 }
 
 .addDeviceHeading {
-  font-size: 1.125rem;
+  font-size: var(--font-size-18);
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
 }
 
 .addDeviceDesc {
-  font-size: 0.9375rem;
+  font-size: var(--font-size-14);
   color: var(--color-text-secondary);
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 var(--space-5);
   max-width: 28rem;
 }
 
 /* ── Narrow viewports ────────────────────────────────────────── */
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .main {
-    padding: var(--space-md);
+    padding: var(--space-8);
+  }
+
+  .card {
+    flex-direction: column;
+    text-align: center;
   }
 
   .cardHeader {
     flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .metaList {
+    justify-content: center;
+  }
+
+  .cardActions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: var(--space-7);
   }
 }
 
 /* ── Reduced motion ──────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important; /* third-party override */
-    transition-duration: 0.01ms !important; /* third-party override */
+  .btnPrimary,
+  .btnSecondary,
+  .btnDanger {
+    transition: none;
   }
 }
