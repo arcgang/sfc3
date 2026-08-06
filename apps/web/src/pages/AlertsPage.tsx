@@ -90,26 +90,28 @@ interface HealthAlertCardProps {
 function HealthAlertCard({ id, priority, message, ago, onAcknowledge }: HealthAlertCardProps) {
   const priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
   return (
-    <div className={styles.alertCard} data-alert-id={String(id)}>
+    <div className={styles.alertCard} data-alert-id={String(id)} data-priority={priority}>
       <div className={styles.alertCardHeader}>
-        <span aria-hidden="true" className={styles.alertIcon}>{priorityIcon(priority)}</span>
-        <div className={styles.alertCardMeta}>
+        <div className={styles.alertTitleGroup}>
+          <span aria-hidden="true" className={styles.alertIcon}>{priorityIcon(priority)}</span>
           <h3 className={styles.alertCardTitle}>{message}</h3>
-          <span className={`${styles.alertSeverity} ${styles[`severity-${priority}`]}`}>
-            {priorityLabel}
-          </span>
         </div>
+        <span className={`${styles.alertSeverity} ${styles[`severity-${priority}`]}`}>
+          {priorityLabel}
+        </span>
       </div>
-      <p className={styles.alertCardAgo}>🕐 {ago}</p>
-      <div className={styles.alertCardActions}>
-        <button type="button" className={styles.alertActionButton}>View Details</button>
-        <button
-          type="button"
-          className={styles.alertActionButton}
-          onClick={onAcknowledge ?? undefined}
-        >
-          Acknowledge
-        </button>
+      <div className={styles.alertCardMeta}>
+        <p className={styles.alertCardAgo}>🕐 {ago}</p>
+        <div className={styles.alertCardActions}>
+          <button type="button" className={styles.alertActionView}>View Details</button>
+          <button
+            type="button"
+            className={styles.alertActionAck}
+            onClick={onAcknowledge ?? undefined}
+          >
+            Acknowledge
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -173,27 +175,27 @@ function InsightCard({ slot, insight }: InsightCardProps) {
   if (!insight) {
     return (
       <div className={styles.insightCard} data-category={slot.category}>
-        <span aria-hidden="true">{slot.defaultIcon}</span>
-        <div>
+        <div className={styles.insightCardHeader}>
+          <div className={styles.insightIconBox} aria-hidden="true">{slot.defaultIcon}</div>
           <h3>{slot.defaultTitle}</h3>
-          <p className={styles.starterState}>
-            Sync your devices to unlock this insight.
-          </p>
         </div>
+        <p className={styles.starterState}>
+          Sync your devices to unlock this insight.
+        </p>
       </div>
     );
   }
 
   return (
     <div className={styles.insightCard} data-category={slot.category}>
-      <span aria-hidden="true">{insight.icon}</span>
-      <div>
+      <div className={styles.insightCardHeader}>
+        <div className={styles.insightIconBox} aria-hidden="true">{insight.icon}</div>
         <h3>{insight.title}</h3>
-        <p>{insight.narrative}</p>
-        <Link to={slot.linkTo} className={styles.insightLink}>
-          {slot.linkLabel}
-        </Link>
       </div>
+      <p>{insight.narrative}</p>
+      <Link to={slot.linkTo} className={styles.insightLink}>
+        {slot.linkLabel}
+      </Link>
     </div>
   );
 }
@@ -419,14 +421,14 @@ export function AlertsPage() {
                 <div className={styles.recActions}>
                   <button
                     type="button"
-                    className={styles.recButton}
+                    className={styles.recButtonDone}
                     onClick={() => handleMarkDone(rec.id)}
                   >
                     Mark as Done
                   </button>
                   <button
                     type="button"
-                    className={styles.recButton}
+                    className={styles.recButtonDismiss}
                     onClick={() => handleDismiss(rec.id)}
                   >
                     Dismiss
