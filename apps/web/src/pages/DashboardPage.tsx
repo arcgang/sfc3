@@ -13,6 +13,16 @@ interface Recommendation {
 
 // ── Types mirroring the API response ─────────────────────────────────────────
 
+type AlertPriority = "high" | "medium" | "low";
+
+interface ApiAlert {
+  id: number;
+  priority: AlertPriority;
+  message: string;
+  acknowledged: boolean;
+  createdAt: string;
+}
+
 type CardId = "HeartRate" | "Steps" | "BloodPressure" | "Sleep";
 
 interface SummaryCard {
@@ -587,6 +597,10 @@ export function DashboardPage() {
 
   const [inlineRec, setInlineRec] = useState<Recommendation | null>(null);
 
+  const [dashAlerts, setDashAlerts] = useState<ApiAlert[]>([]);
+  const [dashAlertsLoading, setDashAlertsLoading] = useState(true);
+  const [dashAlertsError, setDashAlertsError] = useState<string | null>(null);
+
   const staleRefreshFired = useRef(false);
   const hasLoadedOnce = useRef(false);
 
@@ -661,6 +675,30 @@ export function DashboardPage() {
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return;
         setInlineRec(null);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    apiFetch<{ data: ApiAlert[] }>("/alerts", { signal: controller.signal })
+      .then((res) => {
+        const items = Array.isArray(res.data) ? res.data : [];
+        const unacknowledged = items
+          .filter((a) => !a.acknowledged)
+          .sort((a, b) => (b.createdAt > a.createdAt ? 1 : b.createdAt < a.createdAt ? -1 : 0))
+          .slice(0, 2);
+        setDashAlerts(unacknowledged);
+        setDashAlertsLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setDashAlertsError("Failed to load alerts.");
+        setDashAlertsLoading(false);
       });
 
     return () => {
@@ -808,52 +846,26 @@ export function DashboardPage() {
         </div>
 
         <div>
-          <h2>Alerts</h2>
-          {(() => {
-            const staleDevices = dashboard?.lastSyncStatus.deviceStatuses.filter((d) => d.stale) ?? [];
-            const atRiskGoals = counts.atRisk > 0;
-
-            if (!dashLoading && staleDevices.length === 0 && !atRiskGoals) {
-              return (
-                <p className={styles.noAlerts}>No alerts — all devices are up to date.</p>
-              );
-            }
-
-            return (
-              <ul className={styles.alertList}>
-                {staleDevices.map((d) => {
-                  const deviceLabel = d.deviceType === "smart_scale" ? "Scale" : "Smartwatch";
-                  const syncAgo = relativeTime(d.lastSyncAt);
-                  return (
-                    <li key={d.deviceType} className={styles.alertItem}>
-                      <span aria-hidden="true">⚠️</span>
-                      <div>
-                        <strong>Stale Data</strong>
-                        <p>{`${deviceLabel} data last synced ${syncAgo}. Reconnect if no new reading appears today.`}</p>
-                        <Link to="/devices" className={styles.detailsLink}>View Details</Link>
-                      </div>
-                    </li>
-                  );
-                })}
-                {atRiskGoals && (
-                  <li className={styles.alertItem}>
-                    <span aria-hidden="true">🔴</span>
-                    <div>
-                      <strong>Goal At Risk</strong>
-                      <p>{`${counts.atRisk} goal${counts.atRisk !== 1 ? "s are" : " is"} at risk. Review your progress and adjust your activity.`}</p>
-                      <Link to="/goals" className={styles.detailsLink}>View Details</Link>
-                    </div>
-                  </li>
-                )}
-                {dashLoading && staleDevices.length === 0 && (
-                  <li className={styles.alertItem} aria-busy="true">
-                    <span aria-hidden="true">⚠️</span>
-                    <div><strong>Checking for stale data…</strong></div>
-                  </li>
-                )}
-              </ul>
-            );
-          })()}
+          <h2 id="alerts-heading">Alerts</h2>
+          {dashAlertsLoading ? (
+            <p className={styles.noAlerts} aria-busy="true">Loading alerts…</p>
+          ) : dashAlertsError ? (
+            <p role="alert" className={styles.noAlerts}>{dashAlertsError}</p>
+          ) : dashAlerts.length === 0 ? (
+            <p className={styles.noAlerts}>No active alerts — you're all caught up.</p>
+          ) : (
+            <ul className={styles.alertList} aria-label="Recent alerts">
+              {dashAlerts.map((alert) => (
+                <li key={alert.id} className={styles.alertItem} data-alert-id={alert.id}>
+                  <span aria-hidden="true">{alert.priority === "high" ? "🔴" : "⚠️"}</span>
+                  <div>
+                    <p>{alert.message}</p>
+                    <Link to="/alerts" className={styles.detailsLink}>View Details</Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 

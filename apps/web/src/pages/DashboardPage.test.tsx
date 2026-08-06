@@ -167,11 +167,24 @@ const DEFAULT_RECS = [
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
+function makeAlertsResponse(
+  alerts: Array<{
+    id: number;
+    priority: "high" | "medium" | "low";
+    message: string;
+    acknowledged: boolean;
+    createdAt: string;
+  }> = [],
+) {
+  return { data: alerts };
+}
+
 beforeEach(() => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
     if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
 });
@@ -856,63 +869,176 @@ test("sync header shows no stale alert when all devices are fresh", async () => 
   expect(screen.queryByText(/data last synced/)).toBeNull();
 });
 
-// ── Stale device alert ────────────────────────────────────────────────────────
+// ── Alerts section (API-driven) ───────────────────────────────────────────────
 
-test("Alerts section shows stale message when one device is stale", async () => {
-  mockApiFetch.mockImplementation((path: string) => {
-    if (path === "/dashboard")
-      return Promise.resolve(
-        makeDashboardResponse({
-          lastSyncStatus: {
-            overallLastSyncAt: "2026-08-04T16:00:00.000Z",
-            isStale: true,
-            staleThresholdHours: 18,
-            stalenessLabel: "Stale — sync recommended",
-            deviceStatuses: [
-              {
-                deviceType: "smart_scale",
-                status: "connected",
-                lastSyncAt: "2026-08-04T16:00:00.000Z",
-                stale: true,
-              },
-            ],
-          },
-        }),
-      );
-    return Promise.resolve(makeGoalsResponse([]));
-  });
+test("Alerts section heading is rendered", () => {
   renderDashboardPage();
-  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
-  expect(screen.getByText(/Scale data last synced/)).toBeTruthy();
-  expect(screen.getByText(/Reconnect if no new reading appears today/)).toBeTruthy();
+  screen.getByRole("heading", { name: "Alerts", level: 2 });
 });
 
-test("Alerts stale message contains the device-type label for a smartwatch", async () => {
+test("Alerts section shows empty state when API returns no alerts", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  await waitFor(() => {
+    expect(screen.getByText("No active alerts — you're all caught up.")).toBeTruthy();
+  });
+});
+
+test("Alerts section renders two most-recent unacknowledged alerts from API", async () => {
   mockApiFetch.mockImplementation((path: string) => {
-    if (path === "/dashboard")
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts")
       return Promise.resolve(
-        makeDashboardResponse({
-          lastSyncStatus: {
-            overallLastSyncAt: "2026-08-04T12:00:00.000Z",
-            isStale: true,
-            staleThresholdHours: 18,
-            stalenessLabel: "Stale — sync recommended",
-            deviceStatuses: [
-              {
-                deviceType: "smartwatch",
-                status: "connected",
-                lastSyncAt: "2026-08-04T12:00:00.000Z",
-                stale: true,
-              },
-            ],
-          },
-        }),
+        makeAlertsResponse([
+          { id: 1, priority: "high", message: "No data synced in 3 days", acknowledged: false, createdAt: "2026-08-06T08:00:00.000Z" },
+          { id: 2, priority: "medium", message: "Abnormal resting heart rate detected", acknowledged: false, createdAt: "2026-08-06T07:00:00.000Z" },
+          { id: 3, priority: "low", message: "Scale data last synced 18 hours ago", acknowledged: false, createdAt: "2026-08-06T06:00:00.000Z" },
+        ]),
       );
-    return Promise.resolve(makeGoalsResponse([]));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderDashboardPage();
   await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
-  expect(screen.getByText(/Smartwatch data last synced/)).toBeTruthy();
+  const list = await screen.findByRole("list", { name: "Recent alerts" });
+  const items = within(list).getAllByRole("listitem");
+  expect(items.length).toBe(2);
+  expect(within(items[0]!).getByText("No data synced in 3 days")).toBeTruthy();
+  expect(within(items[1]!).getByText("Abnormal resting heart rate detected")).toBeTruthy();
+});
+
+test("Alerts section does not render acknowledged alerts", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts")
+      return Promise.resolve(
+        makeAlertsResponse([
+          { id: 1, priority: "high", message: "Already acknowledged alert", acknowledged: true, createdAt: "2026-08-06T08:00:00.000Z" },
+          { id: 2, priority: "medium", message: "Active unacknowledged alert", acknowledged: false, createdAt: "2026-08-06T07:00:00.000Z" },
+        ]),
+      );
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const list = await screen.findByRole("list", { name: "Recent alerts" });
+  const items = within(list).getAllByRole("listitem");
+  expect(items.length).toBe(1);
+  expect(within(items[0]!).getByText("Active unacknowledged alert")).toBeTruthy();
+  expect(screen.queryByText("Already acknowledged alert")).toBeNull();
+});
+
+test("high-priority alert shows 🔴 icon", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts")
+      return Promise.resolve(
+        makeAlertsResponse([
+          { id: 1, priority: "high", message: "Critical alert message", acknowledged: false, createdAt: "2026-08-06T08:00:00.000Z" },
+        ]),
+      );
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const list = await screen.findByRole("list", { name: "Recent alerts" });
+  const item = within(list).getAllByRole("listitem")[0]!;
+  expect(item.textContent).toContain("🔴");
+});
+
+test("medium-priority alert shows ⚠️ icon", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts")
+      return Promise.resolve(
+        makeAlertsResponse([
+          { id: 1, priority: "medium", message: "Medium alert message", acknowledged: false, createdAt: "2026-08-06T08:00:00.000Z" },
+        ]),
+      );
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const list = await screen.findByRole("list", { name: "Recent alerts" });
+  const item = within(list).getAllByRole("listitem")[0]!;
+  expect(item.textContent).toContain("⚠️");
+});
+
+test("each alert row has a View Details link pointing to /alerts", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts")
+      return Promise.resolve(
+        makeAlertsResponse([
+          { id: 1, priority: "high", message: "Sync failed alert", acknowledged: false, createdAt: "2026-08-06T08:00:00.000Z" },
+        ]),
+      );
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const list = await screen.findByRole("list", { name: "Recent alerts" });
+  const item = within(list).getAllByRole("listitem")[0]!;
+  const link = within(item).getByRole("link", { name: "View Details" });
+  expect(link.getAttribute("href")).toBe("/alerts");
+});
+
+test("Alerts section shows error message when API call fails", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts") return Promise.reject(new Error("Network error"));
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  await waitFor(() => {
+    expect(screen.getByText("Failed to load alerts.")).toBeTruthy();
+  });
+});
+
+test("calls GET /alerts on mount", async () => {
+  renderDashboardPage();
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/alerts",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+});
+
+test("Alerts section shows the two most-recent alerts sorted by createdAt descending", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts")
+      return Promise.resolve(
+        makeAlertsResponse([
+          { id: 10, priority: "low", message: "Oldest alert", acknowledged: false, createdAt: "2026-08-04T06:00:00.000Z" },
+          { id: 20, priority: "high", message: "Newest alert", acknowledged: false, createdAt: "2026-08-06T10:00:00.000Z" },
+          { id: 15, priority: "medium", message: "Middle alert", acknowledged: false, createdAt: "2026-08-05T09:00:00.000Z" },
+        ]),
+      );
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  const list = await screen.findByRole("list", { name: "Recent alerts" });
+  const items = within(list).getAllByRole("listitem");
+  expect(items.length).toBe(2);
+  expect(within(items[0]!).getByText("Newest alert")).toBeTruthy();
+  expect(within(items[1]!).getByText("Middle alert")).toBeTruthy();
 });
 
 // ── Re-fetch failure: previous data stays visible ─────────────────────────────
@@ -921,6 +1047,8 @@ test("after re-fetch failure, the greeting heading remains visible", async () =>
   let callCount = 0;
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
     callCount += 1;
     if (callCount === 1) return Promise.resolve(makeDashboardResponse());
     return Promise.reject(new Error("Network error"));
@@ -936,45 +1064,34 @@ test("after re-fetch failure, the greeting heading remains visible", async () =>
   expect(screen.getByRole("heading", { name: "Good morning, Michael!", level: 1 })).toBeTruthy();
 });
 
-test("after re-fetch failure, previously stale badge text remains in the Alerts section", async () => {
-  let callCount = 0;
+test("after re-fetch failure, Alerts section content remains visible", async () => {
+  let dashCallCount = 0;
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
-    callCount += 1;
-    if (callCount === 1)
+    if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts")
       return Promise.resolve(
-        makeDashboardResponse({
-          lastSyncStatus: {
-            overallLastSyncAt: "2026-08-04T16:00:00.000Z",
-            isStale: true,
-            staleThresholdHours: 18,
-            stalenessLabel: "Stale — sync recommended",
-            deviceStatuses: [
-              {
-                deviceType: "smart_scale",
-                status: "connected",
-                lastSyncAt: "2026-08-04T16:00:00.000Z",
-                stale: true,
-              },
-            ],
-          },
-        }),
+        makeAlertsResponse([
+          { id: 1, priority: "high", message: "Persisted alert message", acknowledged: false, createdAt: "2026-08-06T08:00:00.000Z" },
+        ]),
       );
+    dashCallCount += 1;
+    if (dashCallCount === 1) return Promise.resolve(makeDashboardResponse());
     return Promise.reject(new Error("Network error"));
   });
   renderDashboardPage();
   await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
 
-  // Initial load shows stale alert
-  await screen.findByText(/Scale data last synced/);
+  // Initial load shows the API-fetched alert
+  await screen.findByText("Persisted alert message");
 
   fireEvent.click(screen.getByRole("button", { name: "Refresh dashboard" }));
 
   await waitFor(() => {
     expect(screen.getByText(/Refresh failed/)).toBeTruthy();
   });
-  // Stale alert still visible after re-fetch failure
-  expect(screen.getByText(/Scale data last synced/)).toBeTruthy();
+  // Alert still visible after dashboard re-fetch failure
+  expect(screen.getByText("Persisted alert message")).toBeTruthy();
 });
 
 test("after re-fetch failure, metric cards remain visible", async () => {
@@ -982,6 +1099,7 @@ test("after re-fetch failure, metric cards remain visible", async () => {
   mockApiFetch.mockImplementation((path: string) => {
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
     if (path === "/recommendations") return Promise.resolve(makeRecsResponse([]));
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
     callCount += 1;
     if (callCount === 1) return Promise.resolve(makeDashboardResponse());
     return Promise.reject(new Error("Network error"));
@@ -1005,6 +1123,7 @@ test("renders exactly one inline recommendation when API returns active items", 
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
     if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderDashboardPage();
@@ -1021,6 +1140,7 @@ test("inline recommendation shows first active item's text", async () => {
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
     if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderDashboardPage();
@@ -1047,6 +1167,7 @@ test("Heart Rate card is still visible when inline recommendation is shown", asy
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
     if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderDashboardPage();
@@ -1063,6 +1184,7 @@ test("inline recommendation section renders after Goals section in the document"
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse());
     if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
     if (path === "/recommendations") return Promise.resolve(makeRecsResponse(DEFAULT_RECS));
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
   });
   renderDashboardPage();
