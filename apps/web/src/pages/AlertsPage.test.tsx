@@ -128,10 +128,72 @@ function renderAlertsPage() {
   );
 }
 
+// ── Alert API fixtures ────────────────────────────────────────────────────────
+
+const FOUR_API_ALERTS = [
+  {
+    id: 1,
+    userId: "u1",
+    category: "sync_failure",
+    priority: "high",
+    message: "No data synced in 3 days",
+    ruleKey: null,
+    entityId: null,
+    entityType: null,
+    acknowledged: false,
+    acknowledgedAt: null,
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 2,
+    userId: "u1",
+    category: "abnormal_reading",
+    priority: "medium",
+    message: "Abnormal resting heart rate detected",
+    ruleKey: null,
+    entityId: null,
+    entityType: null,
+    acknowledged: false,
+    acknowledgedAt: null,
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 3,
+    userId: "u1",
+    category: "goal_risk",
+    priority: "medium",
+    message: "Goal at risk: Daily steps",
+    ruleKey: null,
+    entityId: null,
+    entityType: null,
+    acknowledged: false,
+    acknowledgedAt: null,
+    createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 4,
+    userId: "u1",
+    category: "stale_data",
+    priority: "low",
+    message: "Scale data last synced 18 hours ago",
+    ruleKey: null,
+    entityId: null,
+    entityType: null,
+    acknowledged: false,
+    acknowledgedAt: null,
+    createdAt: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+function makeAlertsResponse(alerts = FOUR_API_ALERTS) {
+  return { data: alerts };
+}
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     return Promise.reject(new Error(`Unexpected path: ${path}`));
@@ -441,6 +503,7 @@ test("hydration nudge card message text is rendered", async () => {
 
 test("Personalized Recommendations section is absent when API returns empty array", async () => {
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
@@ -452,6 +515,7 @@ test("Personalized Recommendations section is absent when API returns empty arra
 
 test("no error node when recommendations API returns empty array", async () => {
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
@@ -463,6 +527,7 @@ test("no error node when recommendations API returns empty array", async () => {
 
 test("Health Alerts and Health Insights sections remain visible when recommendations are empty", async () => {
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse([]));
     return Promise.reject(new Error(`Unexpected path: ${path}`));
@@ -495,6 +560,7 @@ test("recommendation cards have no red or orange colour classes", async () => {
 
 test("Dismiss button removes the card from view immediately", async () => {
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     if (typeof path === "string" && path.endsWith("/dismiss")) {
@@ -528,6 +594,7 @@ test("Mark as Done button removes the card and adds next_nudge when returned", a
     updated_at: "2026-08-06T00:00:00.000Z",
   };
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     if (typeof path === "string" && path.endsWith("/mark-done")) {
@@ -549,6 +616,7 @@ test("Mark as Done button removes the card and adds next_nudge when returned", a
 
 test("Dismiss button calls POST /recommendations/nudges/:id/dismiss", async () => {
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     if (typeof path === "string" && path.endsWith("/dismiss")) {
@@ -571,6 +639,7 @@ test("Dismiss button calls POST /recommendations/nudges/:id/dismiss", async () =
 
 test("Mark as Done button calls POST /recommendations/nudges/:id/mark-done", async () => {
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     if (typeof path === "string" && path.endsWith("/mark-done")) {
@@ -605,6 +674,7 @@ test("displayed nudge cards never exceed three at one time", async () => {
     updated_at: "2026-08-06T00:00:00.000Z",
   };
   mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
     if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
     if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
     if (typeof path === "string" && path.endsWith("/mark-done")) {
@@ -630,4 +700,206 @@ test("calls GET /recommendations/nudges on mount", async () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
+});
+
+// ── Dynamic Health Alerts from GET /alerts ────────────────────────────────────
+
+test("calls GET /alerts on mount", async () => {
+  renderAlertsPage();
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/alerts",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+});
+
+test("renders four alert cards from API response", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(section).getAllByRole("button", { name: "Acknowledge" }).length).toBe(4);
+});
+
+test("renders high-priority alert card with message 'No data synced in 3 days'", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  const card = within(section).getByText("No data synced in 3 days").closest("[data-alert-id]");
+  expect(card).not.toBeNull();
+  expect(within(card as HTMLElement).getByRole("button", { name: "Acknowledge" })).toBeTruthy();
+});
+
+test("renders medium-priority alert card with message 'Abnormal resting heart rate detected'", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(section).getByText("Abnormal resting heart rate detected")).toBeTruthy();
+});
+
+test("renders medium-priority alert card with message 'Goal at risk: Daily steps'", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(section).getByText("Goal at risk: Daily steps")).toBeTruthy();
+});
+
+test("renders low-priority alert card with message 'Scale data last synced 18 hours ago'", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(section).getByText("Scale data last synced 18 hours ago")).toBeTruthy();
+});
+
+test("high-priority alert card has View Details button", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  const card = within(section).getByText("No data synced in 3 days").closest("[data-alert-id]");
+  expect(within(card as HTMLElement).getByRole("button", { name: "View Details" })).toBeTruthy();
+});
+
+test("each alert card has a relative timestamp element", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  const cards = within(section).getAllByRole("button", { name: "Acknowledge" })
+    .map((btn) => btn.closest("[data-alert-id]"));
+  for (const card of cards) {
+    // The timestamp paragraph contains "🕐 … ago" — verify at least one /ago/ match per card
+    expect(within(card as HTMLElement).getAllByText(/ago/).length).toBeGreaterThanOrEqual(1);
+  }
+});
+
+test("shows loading state for alerts while fetching", () => {
+  mockApiFetch.mockImplementation(() => new Promise(() => {}));
+  renderAlertsPage();
+  screen.getByText("Loading alerts…");
+});
+
+test("falls back to four sample alerts when alerts API returns empty array", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse([]));
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(section).getByText("No data synced in 3 days")).toBeTruthy();
+  expect(within(section).getByText("Abnormal resting heart rate detected")).toBeTruthy();
+  expect(within(section).getByText("Goal at risk: Daily steps")).toBeTruthy();
+  expect(within(section).getByText("Scale data last synced 18 hours ago")).toBeTruthy();
+});
+
+test("falls back to four sample alerts when alerts API fails", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/alerts") return Promise.reject(new Error("Network error"));
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    return Promise.reject(new Error(`Unexpected path: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(section).getByText("No data synced in 3 days")).toBeTruthy();
+  expect(within(section).getByText("Abnormal resting heart rate detected")).toBeTruthy();
+  expect(within(section).getByText("Goal at risk: Daily steps")).toBeTruthy();
+  expect(within(section).getByText("Scale data last synced 18 hours ago")).toBeTruthy();
+});
+
+test("Acknowledge button calls PATCH /alerts/:id/acknowledge", async () => {
+  mockApiFetch.mockImplementation((path: string, opts?: RequestInit) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.match(/^\/alerts\/\d+\/acknowledge$/) && opts?.method === "PATCH") {
+      return Promise.resolve(null);
+    }
+    return Promise.reject(new Error(`Unexpected call: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  const ackButtons = within(section).getAllByRole("button", { name: "Acknowledge" });
+
+  fireEvent.click(ackButtons[0]!);
+  await waitFor(() => {
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/alerts/1/acknowledge",
+      expect.objectContaining({ method: "PATCH" }),
+    );
+  });
+});
+
+test("clicking Acknowledge removes the card from the list", async () => {
+  mockApiFetch.mockImplementation((path: string, opts?: RequestInit) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.match(/^\/alerts\/\d+\/acknowledge$/) && opts?.method === "PATCH") {
+      return Promise.resolve(null);
+    }
+    return Promise.reject(new Error(`Unexpected call: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  expect(within(section).getAllByRole("button", { name: "Acknowledge" }).length).toBe(4);
+
+  fireEvent.click(within(section).getAllByRole("button", { name: "Acknowledge" })[0]!);
+  await waitFor(() => {
+    expect(within(section).getAllByRole("button", { name: "Acknowledge" }).length).toBe(3);
+  });
+});
+
+test("acknowledging does not remove health_record or goal rows — only removes the card from view", async () => {
+  mockApiFetch.mockImplementation((path: string, opts?: RequestInit) => {
+    if (path === "/alerts") return Promise.resolve(makeAlertsResponse());
+    if (path === "/dashboard") return Promise.resolve(makeDashboardResponse({ insights: FOUR_INSIGHTS }));
+    if (path === "/recommendations/nudges") return Promise.resolve(makeRecsResponse());
+    if (typeof path === "string" && path.match(/^\/alerts\/\d+\/acknowledge$/) && opts?.method === "PATCH") {
+      return Promise.resolve(null);
+    }
+    return Promise.reject(new Error(`Unexpected call: ${path}`));
+  });
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+
+  fireEvent.click(within(section).getAllByRole("button", { name: "Acknowledge" })[0]!);
+  await waitFor(() => {
+    // Remaining three alerts still visible — health records untouched
+    expect(within(section).getAllByRole("button", { name: "Acknowledge" }).length).toBe(3);
+  });
+  // Health Insights section unaffected
+  expect(screen.getByRole("region", { name: "Health Insights" })).toBeTruthy();
+});
+
+test("high-priority alert badge has high severity class", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  const card = within(section).getByText("No data synced in 3 days").closest("[data-alert-id]");
+  const badge = within(card as HTMLElement).getByText("High");
+  expect(badge.className).toMatch(/severity-high/);
+});
+
+test("medium-priority alert badge has medium severity class", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  const card = within(section).getByText("Abnormal resting heart rate detected").closest("[data-alert-id]");
+  const badge = within(card as HTMLElement).getByText("Medium");
+  expect(badge.className).toMatch(/severity-medium/);
+});
+
+test("low-priority alert badge has low severity class", async () => {
+  renderAlertsPage();
+  await screen.findByRole("heading", { name: "Health Alerts", level: 2 });
+  const section = screen.getByRole("region", { name: "Health Alerts" });
+  const card = within(section).getByText("Scale data last synced 18 hours ago").closest("[data-alert-id]");
+  const badge = within(card as HTMLElement).getByText("Low");
+  expect(badge.className).toMatch(/severity-low/);
 });
