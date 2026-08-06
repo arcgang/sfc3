@@ -535,6 +535,28 @@ describe("MyAccountPage — privacy and security", () => {
 
     await screen.findByText("Could not submit deletion request. Please try again.");
   });
+
+  it("Privacy section renders both the Export My Data button and the Delete My Account button", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Privacy & Data Settings" });
+    expect(within(section).getByRole("button", { name: "Export My Data" })).toBeTruthy();
+    expect(within(section).getByRole("button", { name: "Delete My Account" })).toBeTruthy();
+  });
+
+  it("Security section renders at least one Change Password link and one View Sessions link", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Security" });
+    expect(within(section).getByRole("link", { name: "Change Password" })).toBeTruthy();
+    expect(within(section).getByRole("link", { name: "View Sessions" })).toBeTruthy();
+  });
+
+  it("Delete My Account button carries the dangerButton CSS class, not primary or secondary", async () => {
+    renderPage();
+    const deleteBtn = await screen.findByRole("button", { name: "Delete My Account" });
+    expect(deleteBtn.className).toMatch(/dangerButton/);
+    expect(deleteBtn.className).not.toMatch(/primaryButton/);
+    expect(deleteBtn.className).not.toMatch(/secondaryButton/);
+  });
 });
 
 // ── Null profile (no onboarding yet) ─────────────────────────────────────────
