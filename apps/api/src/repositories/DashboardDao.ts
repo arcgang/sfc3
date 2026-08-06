@@ -327,6 +327,13 @@ export class DashboardDao {
     };
   }
 
+  getHealthRecordCount(userId: string): number {
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS cnt FROM health_records WHERE user_id = ?`)
+      .get(userId) as { cnt: number };
+    return row.cnt;
+  }
+
   private latestMetricValues(
     userId: string,
     sourceType: string,

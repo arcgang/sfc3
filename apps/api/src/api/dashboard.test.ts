@@ -802,3 +802,130 @@ describe("GET /api/v1/dashboard — trends", () => {
     expect(d2?.kg).toBe(68.2);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Insights — starter state and data isolation
+// ---------------------------------------------------------------------------
+
+describe("GET /api/v1/dashboard — insights starter state", () => {
+  it("returns insights: [] and insights_starter_state: true when user has 0 health_records rows", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-insights-zero-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: Record<string, unknown> };
+    expect(body.data["insights"]).toEqual([]);
+    expect(body.data["insights_starter_state"]).toBe(true);
+  });
+
+  it("returns insights: [] and insights_starter_state: true when user has exactly 1 health_records row", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-insights-one-1";
+    const connId = "conn-insights-one-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+    seedHealthRecord(db, userId, connId, "smartwatch", "step_count", 5000);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: Record<string, unknown> };
+    expect(body.data["insights"]).toEqual([]);
+    expect(body.data["insights_starter_state"]).toBe(true);
+  });
+
+  it("returns insights array (no insights_starter_state key) when user has 2 or more health_records rows", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-insights-two-1";
+    const connId = "conn-insights-two-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    seedDevice(db, userId, "smartwatch", connId, RECENT_SYNC_AT);
+    seedHealthRecord(db, userId, connId, "smartwatch", "step_count", 5000);
+    seedHealthRecord(db, userId, connId, "smartwatch", "step_count", 6000);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: Record<string, unknown> };
+    expect(Array.isArray(body.data["insights"])).toBe(true);
+    expect("insights_starter_state" in body.data).toBe(false);
+  });
+
+  it("user A's JWT does not return user B's insights (per-user isolation)", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userA = "dash-insights-iso-a";
+    const userB = "dash-insights-iso-b";
+    const connA = "conn-insights-iso-a";
+    const connB = "conn-insights-iso-b";
+    const db = new Database(dbPath);
+    seedUser(db, userA);
+    seedUser(db, userB);
+    // userA has 0 records → starter state
+    // userB has 2 records → no starter state
+    seedDevice(db, userB, "smartwatch", connB, RECENT_SYNC_AT);
+    seedHealthRecord(db, userB, connB, "smartwatch", "step_count", 8000);
+    seedHealthRecord(db, userB, connB, "smartwatch", "step_count", 9000);
+    seedDevice(db, userA, "smartwatch", connA, RECENT_SYNC_AT);
+    db.close();
+
+    const tokenA = makeToken(userA);
+    const tokenB = makeToken(userB);
+
+    const [resA, resB] = await Promise.all([
+      supertest(app).get("/api/v1/dashboard").set("Authorization", `Bearer ${tokenA}`),
+      supertest(app).get("/api/v1/dashboard").set("Authorization", `Bearer ${tokenB}`),
+    ]);
+
+    expect(resA.status).toBe(200);
+    expect(resB.status).toBe(200);
+
+    const bodyA = resA.body as { data: Record<string, unknown> };
+    const bodyB = resB.body as { data: Record<string, unknown> };
+
+    // userA sees starter state; userB does not
+    expect(bodyA.data["insights_starter_state"]).toBe(true);
+    expect("insights_starter_state" in bodyB.data).toBe(false);
+    expect(bodyA.data["insights"]).toEqual([]);
+    expect(Array.isArray(bodyB.data["insights"])).toBe(true);
+  });
+
+  it("returns 200 with insights: [] rather than an error when no insights data exists", async () => {
+    const app = await buildApp();
+    const dbPath = join(ctx.tmpDir, "test.db");
+    const userId = "dash-insights-never-error-1";
+    const db = new Database(dbPath);
+    seedUser(db, userId);
+    db.close();
+
+    const token = makeToken(userId);
+    const res = await supertest(app)
+      .get("/api/v1/dashboard")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { data: Record<string, unknown> };
+    expect(body.data["insights"]).toEqual([]);
+  });
+});

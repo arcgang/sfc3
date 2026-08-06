@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { getDatabase } from "../db/connection.js";
 import { DashboardDao } from "../repositories/DashboardDao.js";
 import type { ErrorResponse } from "../types/errors.js";
@@ -11,69 +11,91 @@ import {
   type DeviceSyncStatus,
   type HealthMetrics,
 } from "../dashboard/dashboardHelpers.js";
+import { generateInsights, type InsightObject } from "../insights/generator.js";
 import { attemptMockRefresh } from "../routes/dashboard.js";
 
 export const dashboardRouter = Router();
 
-dashboardRouter.get("/", (req: Request, res: Response): void => {
-  const correlationId =
-    typeof res.locals["correlationId"] === "string" ? res.locals["correlationId"] : "";
+dashboardRouter.get("/", (req: Request, res: Response, next: NextFunction): void => {
+  void (async () => {
+    const correlationId =
+      typeof res.locals["correlationId"] === "string" ? res.locals["correlationId"] : "";
 
-  const rawUser = res.locals["user"];
-  if (
-    typeof rawUser !== "object" ||
-    rawUser === null ||
-    typeof (rawUser as Record<string, unknown>)["sub"] !== "string"
-  ) {
-    const body: ErrorResponse = {
-      meta: { correlationId, timestamp: new Date().toISOString() },
-      error: { type: "AUTH_TOKEN_INVALID", details: [] },
+    const rawUser = res.locals["user"];
+    if (
+      typeof rawUser !== "object" ||
+      rawUser === null ||
+      typeof (rawUser as Record<string, unknown>)["sub"] !== "string"
+    ) {
+      const body: ErrorResponse = {
+        meta: { correlationId, timestamp: new Date().toISOString() },
+        error: { type: "AUTH_TOKEN_INVALID", details: [] },
+      };
+      res.status(401).json(body);
+      return;
+    }
+    const userId = (rawUser as { sub: string }).sub;
+
+    const db = getDatabase();
+    const dao = new DashboardDao(db);
+
+    // Core raw data
+    const data = dao.getForUser(userId);
+    const profile = dao.getUserProfile(userId);
+    const cardMetrics = dao.getCardMetrics(userId);
+    const trends = dao.getTrendsForUser(userId);
+
+    // Greeting derived from server wall-clock hour (UTC)
+    const hourUtc = new Date().getUTCHours();
+    const greeting = buildGreeting(profile.fullName || "there", hourUtc);
+
+    // Device presence for empty-state rules
+    const hasSmartwatch = data.devices.some((d) => d.deviceType === "smartwatch");
+    const hasSmartScale = data.devices.some((d) => d.deviceType === "smart_scale");
+    const devices: DevicePresence = { hasSmartwatch, hasSmartScale };
+
+    const metrics: HealthMetrics = {
+      heartRateBpm: cardMetrics.heartRateBpm,
+      stepCount: cardMetrics.stepCount,
+      stepsGoal: cardMetrics.stepsGoal,
+      systolicBp: cardMetrics.systolicBp,
+      diastolicBp: cardMetrics.diastolicBp,
+      sleepMinutes: cardMetrics.sleepMinutes,
+      sleepQuality: cardMetrics.sleepQuality,
     };
-    res.status(401).json(body);
-    return;
-  }
-  const userId = (rawUser as { sub: string }).sub;
 
-  const db = getDatabase();
-  const dao = new DashboardDao(db);
+    const personaMode = (profile.personaMode as PersonaMode) ?? "default";
+    const summaryCards = buildSummaryCards(metrics, devices, personaMode);
 
-  // Core raw data
-  const data = dao.getForUser(userId);
-  const profile = dao.getUserProfile(userId);
-  const cardMetrics = dao.getCardMetrics(userId);
-  const trends = dao.getTrendsForUser(userId);
+    // Last sync status derived from device rows.
+    // staleThresholdHours for the overall payload uses the minimum (strictest) threshold
+    // across all connected devices, or the LLD default of 18h when none are present.
+    const DEFAULT_STALE_THRESHOLD = 18;
+    const staleThresholdHours =
+      data.devices.length > 0
+        ? Math.min(...data.devices.map((d) => d.staleAfterHours))
+        : DEFAULT_STALE_THRESHOLD;
 
-  // Greeting derived from server wall-clock hour (UTC)
-  const hourUtc = new Date().getUTCHours();
-  const greeting = buildGreeting(profile.fullName || "there", hourUtc);
+    const deviceSyncStatuses: DeviceSyncStatus[] = data.devices.map((d) => ({
+      deviceType: d.deviceType,
+      status: d.connectionStatus,
+      lastSyncAt: d.lastSuccessfulSyncAt,
+      stale: d.stale,
+    }));
+    const lastSyncStatus = buildLastSyncStatus(deviceSyncStatuses, staleThresholdHours);
 
-  // Device presence for empty-state rules
-  const hasSmartwatch = data.devices.some((d) => d.deviceType === "smartwatch");
-  const hasSmartScale = data.devices.some((d) => d.deviceType === "smart_scale");
-  const devices: DevicePresence = { hasSmartwatch, hasSmartScale };
+    // Insights: starter state when fewer than 2 health_records rows exist for this user.
+    const recordCount = dao.getHealthRecordCount(userId);
+    let insights: InsightObject[];
+    let insightsStarterState: boolean | undefined;
 
-  const metrics: HealthMetrics = {
-    heartRateBpm: cardMetrics.heartRateBpm,
-    stepCount: cardMetrics.stepCount,
-    stepsGoal: cardMetrics.stepsGoal,
-    systolicBp: cardMetrics.systolicBp,
-    diastolicBp: cardMetrics.diastolicBp,
-    sleepMinutes: cardMetrics.sleepMinutes,
-    sleepQuality: cardMetrics.sleepQuality,
-  };
-
-  const personaMode = (profile.personaMode as PersonaMode) ?? "default";
-  const summaryCards = buildSummaryCards(metrics, devices, personaMode);
-
-  // Last sync status derived from device rows.
-  // staleThresholdHours for the overall payload uses the minimum (strictest) threshold
-  // across all connected devices, or the LLD default of 18h when none are present.
-  const DEFAULT_STALE_THRESHOLD = 18;
-  const staleThresholdHours =
-    data.devices.length > 0
-      ? Math.min(...data.devices.map((d) => d.staleAfterHours))
-      : DEFAULT_STALE_THRESHOLD;
-
+    if (recordCount < 2) {
+      insights = [];
+      insightsStarterState = true;
+    } else {
+      insights = await generateInsights(userId, db);
+      insightsStarterState = undefined;
+    }
   // Trigger a mock refresh attempt for each stale device (logs sync_started + sync_failed).
   // last_successful_sync_at and health_records are not modified on failure.
   for (const d of data.devices) {
@@ -90,19 +112,26 @@ dashboardRouter.get("/", (req: Request, res: Response): void => {
   }));
   const lastSyncStatus = buildLastSyncStatus(deviceSyncStatuses, staleThresholdHours);
 
-  res.setHeader("X-Correlation-Id", correlationId);
-  res.status(200).json({
-    meta: { correlationId, timestamp: new Date().toISOString() },
-    data: {
+    const responseData: Record<string, unknown> = {
       greeting,
       personaMode,
       summaryCards,
       lastSyncStatus,
       trends,
+      insights,
       // Legacy raw device/metric fields preserved for existing consumers
       devices: data.devices,
       smartwatch: data.smartwatch,
       smartScale: data.smartScale,
-    },
-  });
+    };
+    if (insightsStarterState !== undefined) {
+      responseData["insights_starter_state"] = insightsStarterState;
+    }
+
+    res.setHeader("X-Correlation-Id", correlationId);
+    res.status(200).json({
+      meta: { correlationId, timestamp: new Date().toISOString() },
+      data: responseData,
+    });
+  })().catch(next);
 });
