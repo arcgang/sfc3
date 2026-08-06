@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -64,8 +64,36 @@ describe("loadAlertThresholds", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildConfig", () => {
-  it("throws when JWT_SECRET is missing", () => {
-    expect(() => buildConfig({})).toThrow("JWT_SECRET");
+  it("does not throw when JWT_SECRET is missing — falls back to dev default", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      expect(() => buildConfig({})).not.toThrow();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("emits a console.warn containing 'JWT_SECRET' when JWT_SECRET is missing", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      buildConfig({});
+      const warned = warnSpy.mock.calls.some((args) =>
+        args.some((a) => typeof a === "string" && a.includes("JWT_SECRET")),
+      );
+      expect(warned).toBe(true);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("uses the dev fallback secret 'dev-secret-do-not-use-in-production' when JWT_SECRET is absent", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const cfg = buildConfig({});
+      expect(cfg.jwtSecret).toBe("dev-secret-do-not-use-in-production");
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it("returns port=3001 when PORT is not set", () => {
