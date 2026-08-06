@@ -133,7 +133,7 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — authentication", () => {
 // ---------------------------------------------------------------------------
 
 describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
-  it("returns HTTP 200 on a valid acknowledge request", async () => {
+  it("returns HTTP 204 on a valid acknowledge request", async () => {
     const app = await buildApp();
     const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-ack-1";
@@ -145,10 +145,10 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
       .patch(`/api/v1/alerts/${alertId}/acknowledge`)
       .set("Authorization", `Bearer ${token}`);
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
   });
 
-  it("sets acknowledged=true in the response data.alert", async () => {
+  it("returns no body on a valid acknowledge request", async () => {
     const app = await buildApp();
     const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-ack-2";
@@ -160,11 +160,11 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
       .patch(`/api/v1/alerts/${alertId}/acknowledge`)
       .set("Authorization", `Bearer ${token}`);
 
-    const body = res.body as { data: { alert: { acknowledged: boolean } } };
-    expect(body.data.alert.acknowledged).toBe(true);
+    expect(res.status).toBe(204);
+    expect(res.body).toEqual({});
   });
 
-  it("sets a valid ISO 8601 acknowledgedAt timestamp in the response data.alert", async () => {
+  it("persists acknowledged_at timestamp in the database after the call", async () => {
     const app = await buildApp();
     const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-ack-3";
@@ -172,15 +172,18 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
     const alertId = await seedAlert(userId);
     const token = makeToken(userId);
 
-    const res = await supertest(app)
+    await supertest(app)
       .patch(`/api/v1/alerts/${alertId}/acknowledge`)
       .set("Authorization", `Bearer ${token}`);
 
-    const body = res.body as { data: { alert: { acknowledgedAt: string } } };
-    expect(body.data.alert.acknowledgedAt).not.toBeNull();
-    expect(new Date(body.data.alert.acknowledgedAt).toISOString()).toBe(
-      body.data.alert.acknowledgedAt,
-    );
+    const db = new Database(dbPath);
+    const row = db
+      .prepare("SELECT acknowledged_at FROM alerts WHERE id = ?")
+      .get(alertId) as { acknowledged_at: string | null } | undefined;
+    db.close();
+
+    expect(row?.acknowledged_at).not.toBeNull();
+    expect(new Date(row!.acknowledged_at!).toISOString()).toBe(row!.acknowledged_at);
   });
 
   it("persists acknowledged=1 on the database row after the call", async () => {
@@ -276,12 +279,12 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
       .set("Authorization", `Bearer ${token}`);
 
     const calls = ctx.consoleSpy.mock.calls;
-    const ackLog = calls.find(
-      (call) =>
-        typeof call[0] === "object" &&
-        call[0] !== null &&
-        (call[0] as Record<string, unknown>)["event"] === "alerts.acknowledged",
-    );
+    const ackLog = calls.find((call) => {
+      try {
+        const parsed = typeof call[0] === "string" ? JSON.parse(call[0]) : call[0];
+        return parsed !== null && typeof parsed === "object" && (parsed as Record<string, unknown>)["event"] === "alerts.acknowledged";
+      } catch { return false; }
+    });
     expect(ackLog).toBeDefined();
   });
 
@@ -298,15 +301,18 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
       .set("Authorization", `Bearer ${token}`);
 
     const calls = ctx.consoleSpy.mock.calls;
-    const ackLog = calls.find(
-      (call) =>
-        typeof call[0] === "object" &&
-        call[0] !== null &&
-        (call[0] as Record<string, unknown>)["event"] === "alerts.acknowledged",
-    );
-    expect(ackLog).toBeDefined();
-    if (!ackLog) throw new Error("alerts.acknowledged log not found");
-    expect((ackLog[0] as Record<string, unknown>)["alert_id"]).toBe(alertId);
+    let parsedAckLog: Record<string, unknown> | null = null;
+    for (const call of calls) {
+      try {
+        const parsed = typeof call[0] === "string" ? JSON.parse(call[0]) : call[0];
+        if (parsed !== null && typeof parsed === "object" && (parsed as Record<string, unknown>)["event"] === "alerts.acknowledged") {
+          parsedAckLog = parsed as Record<string, unknown>;
+          break;
+        }
+      } catch { continue; }
+    }
+    expect(parsedAckLog).not.toBeNull();
+    expect(parsedAckLog!["alert_id"]).toBe(alertId);
   });
 
   it("emits alerts.acknowledged log with user_id matching the authenticated user", async () => {
@@ -322,18 +328,21 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
       .set("Authorization", `Bearer ${token}`);
 
     const calls = ctx.consoleSpy.mock.calls;
-    const ackLog = calls.find(
-      (call) =>
-        typeof call[0] === "object" &&
-        call[0] !== null &&
-        (call[0] as Record<string, unknown>)["event"] === "alerts.acknowledged",
-    );
-    expect(ackLog).toBeDefined();
-    if (!ackLog) throw new Error("alerts.acknowledged log not found");
-    expect((ackLog[0] as Record<string, unknown>)["user_id"]).toBe(userId);
+    let parsedAckLog: Record<string, unknown> | null = null;
+    for (const call of calls) {
+      try {
+        const parsed = typeof call[0] === "string" ? JSON.parse(call[0]) : call[0];
+        if (parsed !== null && typeof parsed === "object" && (parsed as Record<string, unknown>)["event"] === "alerts.acknowledged") {
+          parsedAckLog = parsed as Record<string, unknown>;
+          break;
+        }
+      } catch { continue; }
+    }
+    expect(parsedAckLog).not.toBeNull();
+    expect(parsedAckLog!["user_id"]).toBe(userId);
   });
 
-  it("response includes meta.correlationId as a UUID", async () => {
+  it("returns status 204 (no body) — correlationId is not in the response body for 204", async () => {
     const app = await buildApp();
     const dbPath = join(ctx.tmpDir, "test.db");
     const userId = "user-ack-10";
@@ -345,10 +354,8 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — success", () => {
       .patch(`/api/v1/alerts/${alertId}/acknowledge`)
       .set("Authorization", `Bearer ${token}`);
 
-    const body = res.body as { meta: { correlationId: string } };
-    expect(body.meta.correlationId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
+    expect(res.status).toBe(204);
+    expect(res.body).toEqual({});
   });
 });
 
@@ -398,12 +405,12 @@ describe("PATCH /api/v1/alerts/:id/acknowledge — not found", () => {
       .set("Authorization", `Bearer ${token}`);
 
     const calls = ctx.consoleSpy.mock.calls;
-    const ackLog = calls.find(
-      (call) =>
-        typeof call[0] === "object" &&
-        call[0] !== null &&
-        (call[0] as Record<string, unknown>)["event"] === "alerts.acknowledged",
-    );
+    const ackLog = calls.find((call) => {
+      try {
+        const parsed = typeof call[0] === "string" ? JSON.parse(call[0]) : call[0];
+        return parsed !== null && typeof parsed === "object" && (parsed as Record<string, unknown>)["event"] === "alerts.acknowledged";
+      } catch { return false; }
+    });
     expect(ackLog).toBeUndefined();
   });
 
