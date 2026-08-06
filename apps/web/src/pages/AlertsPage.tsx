@@ -5,6 +5,20 @@ import styles from "./AlertsPage.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ApiAlert {
+  id: number;
+  userId: string;
+  category: string;
+  priority: "high" | "medium" | "low";
+  message: string;
+  ruleKey: string | null;
+  entityId: string | null;
+  entityType: string | null;
+  acknowledged: boolean;
+  acknowledgedAt: string | null;
+  createdAt: string;
+}
+
 interface DashboardInsight {
   category: string;
   title: string;
@@ -26,6 +40,79 @@ interface Recommendation {
 interface NudgeActionResult {
   dismissed: Recommendation;
   next_nudge: Recommendation | null;
+}
+
+// ── Alert helpers ─────────────────────────────────────────────────────────────
+
+function priorityIcon(priority: "high" | "medium" | "low"): string {
+  if (priority === "high") return "🔴";
+  if (priority === "medium") return "⚠️";
+  return "ℹ️";
+}
+
+function relativeTimeFromIso(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  if (diffSeconds < 60) return "just now";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+// ── Fallback sample alerts used when API fails or returns empty ───────────────
+
+interface FallbackAlert {
+  id: string;
+  priority: "high" | "medium" | "low";
+  message: string;
+}
+
+const FALLBACK_ALERTS: FallbackAlert[] = [
+  { id: "fallback-high", priority: "high", message: "No data synced in 3 days" },
+  { id: "fallback-medium-hr", priority: "medium", message: "Abnormal resting heart rate detected" },
+  { id: "fallback-medium-steps", priority: "medium", message: "Goal at risk: Daily steps" },
+  { id: "fallback-low", priority: "low", message: "Scale data last synced 18 hours ago" },
+];
+
+// ── Health Alert card ─────────────────────────────────────────────────────────
+
+interface HealthAlertCardProps {
+  id: string | number;
+  priority: "high" | "medium" | "low";
+  message: string;
+  ago: string;
+  onAcknowledge?: (() => void) | null;
+}
+
+function HealthAlertCard({ id, priority, message, ago, onAcknowledge }: HealthAlertCardProps) {
+  const priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
+  return (
+    <div className={styles.alertCard} data-alert-id={String(id)}>
+      <div className={styles.alertCardHeader}>
+        <span aria-hidden="true" className={styles.alertIcon}>{priorityIcon(priority)}</span>
+        <div className={styles.alertCardMeta}>
+          <h3 className={styles.alertCardTitle}>{message}</h3>
+          <span className={`${styles.alertSeverity} ${styles[`severity-${priority}`]}`}>
+            {priorityLabel}
+          </span>
+        </div>
+      </div>
+      <p className={styles.alertCardAgo}>🕐 {ago}</p>
+      <div className={styles.alertCardActions}>
+        <button type="button" className={styles.alertActionButton}>View Details</button>
+        <button
+          type="button"
+          className={styles.alertActionButton}
+          onClick={onAcknowledge ?? undefined}
+        >
+          Acknowledge
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ── Insight category config ───────────────────────────────────────────────────
@@ -75,7 +162,7 @@ const INSIGHT_SLOTS: InsightSlot[] = [
   },
 ];
 
-// ── Sub-component ─────────────────────────────────────────────────────────────
+// ── Insight sub-component ─────────────────────────────────────────────────────
 
 interface InsightCardProps {
   slot: InsightSlot;
@@ -111,77 +198,12 @@ function InsightCard({ slot, insight }: InsightCardProps) {
   );
 }
 
-// ── Static Health Alert cards ─────────────────────────────────────────────────
-
-interface HealthAlertData {
-  id: string;
-  icon: string;
-  severity: "high" | "medium" | "low";
-  title: string;
-  body: string;
-  ago: string;
-}
-
-const STATIC_ALERTS: HealthAlertData[] = [
-  {
-    id: "no-data-3-days",
-    icon: "🔴",
-    severity: "high",
-    title: "No data synced in 3 days",
-    body: "Your Apple Watch hasn't synced data in 3 days. Please reconnect your device to ensure your health data stays up to date and accurate.",
-    ago: "2 hours ago",
-  },
-  {
-    id: "abnormal-heart-rate",
-    icon: "⚠️",
-    severity: "medium",
-    title: "Abnormal resting heart rate detected",
-    body: "Your resting heart rate has been consistently higher than your baseline (78 bpm vs. usual 64 bpm) for the past 3 days. Consider reviewing your stress levels and sleep quality.",
-    ago: "5 hours ago",
-  },
-  {
-    id: "goal-at-risk",
-    icon: "⚠️",
-    severity: "medium",
-    title: "Goal at risk: Daily steps",
-    body: "You're 2,500 steps behind your daily goal of 10,000 steps. A 20-minute walk can help you get back on track before the day ends.",
-    ago: "1 hour ago",
-  },
-  {
-    id: "scale-stale",
-    icon: "ℹ️",
-    severity: "low",
-    title: "Scale data last synced 18 hours ago",
-    body: "Your smart scale hasn't synced new data in 18 hours. If you've weighed yourself recently, try reconnecting your scale to update your body composition metrics.",
-    ago: "18 hours ago",
-  },
-];
-
-function HealthAlertCard({ alert }: { alert: HealthAlertData }) {
-  return (
-    <div className={styles.alertCard} data-alert-id={alert.id}>
-      <div className={styles.alertCardHeader}>
-        <span aria-hidden="true" className={styles.alertIcon}>{alert.icon}</span>
-        <div className={styles.alertCardMeta}>
-          <h3 className={styles.alertCardTitle}>{alert.title}</h3>
-          <span className={`${styles.alertSeverity} ${styles[`severity-${alert.severity}`]}`}>
-            {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
-          </span>
-        </div>
-      </div>
-      <p className={styles.alertCardBody}>{alert.body}</p>
-      <p className={styles.alertCardAgo}>🕐 {alert.ago}</p>
-      <div className={styles.alertCardActions}>
-        <button type="button" className={styles.alertActionButton}>View Details</button>
-        <button type="button" className={styles.alertActionButton}>Acknowledge</button>
-      </div>
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function AlertsPage() {
+  const [apiAlerts, setApiAlerts] = useState<ApiAlert[] | null>(null);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+
   const [insights, setInsights] = useState<DashboardInsight[]>([]);
   const [starterState, setStarterState] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -189,6 +211,26 @@ export function AlertsPage() {
 
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [recsLoading, setRecsLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    apiFetch<{ data: ApiAlert[] }>("/alerts", { signal: controller.signal })
+      .then((res) => {
+        const items = Array.isArray(res.data) ? res.data : [];
+        setApiAlerts(items);
+        setAlertsLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setApiAlerts(null);
+        setAlertsLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -233,7 +275,7 @@ export function AlertsPage() {
 
   const isStarterState = starterState || insights.length === 0;
 
-  function retry() {
+  function retryInsights() {
     setError(null);
     setLoading(true);
     apiFetch<{ data: DashboardPayload }>("/dashboard")
@@ -247,6 +289,13 @@ export function AlertsPage() {
         setError("Failed to load insights. Please try again.");
         setLoading(false);
       });
+  }
+
+  function handleAcknowledge(id: number) {
+    setApiAlerts((prev) => (prev ? prev.filter((a) => a.id !== id) : prev));
+    apiFetch<null>(`/alerts/${id}/acknowledge`, { method: "PATCH" }).catch(() => {
+      // Optimistic removal stands; no rollback on failure
+    });
   }
 
   function applyNudgeResult(id: string, result: NudgeActionResult) {
@@ -285,6 +334,8 @@ export function AlertsPage() {
       .catch(() => {});
   }
 
+  const useFallback = !alertsLoading && (apiAlerts === null || apiAlerts.length === 0);
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
@@ -296,11 +347,38 @@ export function AlertsPage() {
 
       <section aria-labelledby="health-alerts-heading" className={styles.section}>
         <h2 id="health-alerts-heading">Health Alerts</h2>
-        <div className={styles.alertGrid}>
-          {STATIC_ALERTS.map((alert) => (
-            <HealthAlertCard key={alert.id} alert={alert} />
-          ))}
-        </div>
+
+        {alertsLoading ? (
+          <p className={styles.loadingState} aria-busy="true">
+            Loading alerts…
+          </p>
+        ) : useFallback ? (
+          <div className={styles.alertGrid}>
+            {FALLBACK_ALERTS.map((alert) => (
+              <HealthAlertCard
+                key={alert.id}
+                id={alert.id}
+                priority={alert.priority}
+                message={alert.message}
+                ago="—"
+                onAcknowledge={null}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={styles.alertGrid}>
+            {(apiAlerts ?? []).map((alert) => (
+              <HealthAlertCard
+                key={alert.id}
+                id={alert.id}
+                priority={alert.priority}
+                message={alert.message}
+                ago={relativeTimeFromIso(alert.createdAt)}
+                onAcknowledge={() => handleAcknowledge(alert.id)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="health-insights-heading" className={styles.section}>
@@ -313,7 +391,7 @@ export function AlertsPage() {
         ) : error ? (
           <p role="alert" className={styles.errorState}>
             {error}{" "}
-            <button type="button" className={styles.retryButton} onClick={retry}>
+            <button type="button" className={styles.retryButton} onClick={retryInsights}>
               Retry
             </button>
           </p>

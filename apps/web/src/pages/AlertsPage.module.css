@@ -175,6 +175,23 @@
   color: var(--color-text-secondary, #4b5563);
 }
 
+/* Priority-specific badge colours */
+.severity-high {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.severity-medium {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+/* No info token exists yet; blue literal is the only option */
+.severity-low {
+  background-color: #eff6ff;
+  color: #1e40af;
+}
+
 .alertCardBody {
   margin: 0;
   font-size: 0.875rem;
