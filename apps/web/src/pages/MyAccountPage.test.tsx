@@ -188,6 +188,7 @@ describe("MyAccountPage — edit profile form", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { profile: updatedProfile } });
 
     renderPage();
@@ -211,6 +212,7 @@ describe("MyAccountPage — edit profile form", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { profile: updatedProfile } });
 
     renderPage();
@@ -255,6 +257,7 @@ describe("MyAccountPage — dashboard mode selector", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockResolvedValueOnce({ data: { profile: updatedProfile } });
 
     renderPage();
@@ -311,6 +314,7 @@ describe("MyAccountPage — dashboard mode selector", () => {
       .mockResolvedValueOnce({
         data: { email: "alex@example.com", profile: PROFILE_FIXTURE },
       })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
       .mockRejectedValueOnce(new Error("save failed"));
 
     renderPage();
@@ -347,6 +351,142 @@ describe("MyAccountPage — privacy and security", () => {
   it("renders the View Sessions link", async () => {
     renderPage();
     await screen.findByRole("link", { name: "View Sessions" });
+  });
+
+  it("renders the 'View our Privacy Policy' link pointing to /privacy", async () => {
+    renderPage();
+    const link = await screen.findByRole("link", { name: "View our Privacy Policy" });
+    expect(link.getAttribute("href")).toBe("/privacy");
+  });
+
+  it("renders Privacy & Data Settings section with ownership copy", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Privacy & Data Settings" });
+    expect(within(section).getByText("You own your health data. You can export or delete it anytime.")).toBeTruthy();
+  });
+
+  it("renders Privacy & Data Settings section with encryption/no-sale copy", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", { name: "Privacy & Data Settings" });
+    expect(within(section).getByText(/never sold to third parties/)).toBeTruthy();
+  });
+
+  it("calls GET /privacy/viewed on mount to emit the privacy.viewed audit event", async () => {
+    renderPage();
+    await waitFor(() => {
+      const viewedCall = mockApiFetch.mock.calls.find(
+        (c) => c[0] === "/privacy/viewed",
+      );
+      expect(viewedCall).toBeDefined();
+    });
+  });
+
+  it("calls POST /privacy/requests with requestType='export' when Export My Data is clicked", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
+      .mockResolvedValueOnce({
+        data: {
+          requestId: "req-001",
+          requestType: "export",
+          requestStatus: "requested",
+          message: "Your data export request has been received. You will be notified when it is ready.",
+        },
+      });
+
+    renderPage();
+    const exportBtn = await screen.findByRole("button", { name: "Export My Data" });
+    act(() => { fireEvent.click(exportBtn); });
+
+    await waitFor(() => {
+      const postCall = mockApiFetch.mock.calls.find(
+        (c) => c[0] === "/privacy/requests" && (c[1] as RequestInit | undefined)?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+      const body = JSON.parse((postCall![1] as RequestInit).body as string) as { requestType: string };
+      expect(body.requestType).toBe("export");
+    });
+  });
+
+  it("shows confirmation message after a successful Export My Data request", async () => {
+    const confirmMsg = "Your data export request has been received. You will be notified when it is ready.";
+    mockApiFetch
+      .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
+      .mockResolvedValueOnce({ data: { requestId: "req-001", requestType: "export", requestStatus: "requested", message: confirmMsg } });
+
+    renderPage();
+    const exportBtn = await screen.findByRole("button", { name: "Export My Data" });
+    act(() => { fireEvent.click(exportBtn); });
+
+    await screen.findByText(confirmMsg);
+  });
+
+  it("shows an error message when the Export My Data request fails", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
+      .mockRejectedValueOnce(new Error("Network error"));
+
+    renderPage();
+    const exportBtn = await screen.findByRole("button", { name: "Export My Data" });
+    act(() => { fireEvent.click(exportBtn); });
+
+    await screen.findByText("Could not submit export request. Please try again.");
+  });
+
+  it("calls POST /privacy/requests with requestType='delete' when Delete My Account is clicked", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
+      .mockResolvedValueOnce({
+        data: {
+          requestId: "req-002",
+          requestType: "delete",
+          requestStatus: "requested",
+          message: "Your account deletion request has been received. Your account will be processed for deletion.",
+        },
+      });
+
+    renderPage();
+    const deleteBtn = await screen.findByRole("button", { name: "Delete My Account" });
+    act(() => { fireEvent.click(deleteBtn); });
+
+    await waitFor(() => {
+      const postCall = mockApiFetch.mock.calls.find(
+        (c) => c[0] === "/privacy/requests" && (c[1] as RequestInit | undefined)?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+      const body = JSON.parse((postCall![1] as RequestInit).body as string) as { requestType: string };
+      expect(body.requestType).toBe("delete");
+    });
+  });
+
+  it("shows confirmation message after a successful Delete My Account request", async () => {
+    const confirmMsg = "Your account deletion request has been received. Your account will be processed for deletion.";
+    mockApiFetch
+      .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
+      .mockResolvedValueOnce({ data: { requestId: "req-002", requestType: "delete", requestStatus: "requested", message: confirmMsg } });
+
+    renderPage();
+    const deleteBtn = await screen.findByRole("button", { name: "Delete My Account" });
+    act(() => { fireEvent.click(deleteBtn); });
+
+    await screen.findByText(confirmMsg);
+  });
+
+  it("shows an error message when the Delete My Account request fails", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce({ data: { email: "alex@example.com", profile: PROFILE_FIXTURE } })
+      .mockResolvedValueOnce({ data: {} }) // privacy/viewed
+      .mockRejectedValueOnce(new Error("Network error"));
+
+    renderPage();
+    const deleteBtn = await screen.findByRole("button", { name: "Delete My Account" });
+    act(() => { fireEvent.click(deleteBtn); });
+
+    await screen.findByText("Could not submit deletion request. Please try again.");
   });
 });
 

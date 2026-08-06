@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import styles from "./MyAccountPage.module.css";
 
@@ -53,6 +54,14 @@ export function MyAccountPage() {
   const [modeSaveError, setModeSaveError] = useState<string | null>(null);
   const [modeSaveSuccess, setModeSaveSuccess] = useState(false);
 
+  // Privacy request state
+  const [exportSubmitting, setExportSubmitting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     async function loadProfile() {
@@ -77,6 +86,14 @@ export function MyAccountPage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void apiFetch<unknown>("/privacy/viewed", { signal: controller.signal }).catch(() => {
+      // best-effort — failure does not block the UI
+    });
+    return () => controller.abort();
   }, []);
 
   function openEdit() {
@@ -150,6 +167,40 @@ export function MyAccountPage() {
       setModeSaveError("Could not save your Dashboard Mode. Please try again.");
     } finally {
       setModeSaving(false);
+    }
+  }
+
+  async function handleExportData() {
+    setExportSubmitting(true);
+    setExportMessage(null);
+    setExportError(null);
+    try {
+      const res = await apiFetch<{ data: { message: string } }>("/privacy/requests", {
+        method: "POST",
+        body: JSON.stringify({ requestType: "export" }),
+      });
+      setExportMessage(res.data.message);
+    } catch {
+      setExportError("Could not submit export request. Please try again.");
+    } finally {
+      setExportSubmitting(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteSubmitting(true);
+    setDeleteMessage(null);
+    setDeleteError(null);
+    try {
+      const res = await apiFetch<{ data: { message: string } }>("/privacy/requests", {
+        method: "POST",
+        body: JSON.stringify({ requestType: "delete" }),
+      });
+      setDeleteMessage(res.data.message);
+    } catch {
+      setDeleteError("Could not submit deletion request. Please try again.");
+    } finally {
+      setDeleteSubmitting(false);
     }
   }
 
@@ -315,9 +366,40 @@ export function MyAccountPage() {
               Your wellness data is encrypted, secure, and never sold to third parties. We are
               committed to protecting your privacy and giving you full control over your information.
             </p>
+            <p className={styles.privacyText}>
+              <Link to="/privacy" className={styles.securityLink}>View our Privacy Policy</Link>
+            </p>
+
+            {exportMessage && (
+              <p role="status" className={styles.successMessage}>{exportMessage}</p>
+            )}
+            {exportError && (
+              <p role="alert" className={styles.errorMessage}>{exportError}</p>
+            )}
+            {deleteMessage && (
+              <p role="status" className={styles.successMessage}>{deleteMessage}</p>
+            )}
+            {deleteError && (
+              <p role="alert" className={styles.errorMessage}>{deleteError}</p>
+            )}
+
             <div className={styles.buttonRow}>
-              <button type="button" className={styles.secondaryButton}>Export My Data</button>
-              <button type="button" className={styles.dangerButton}>Delete My Account</button>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => void handleExportData()}
+                disabled={exportSubmitting}
+              >
+                {exportSubmitting ? "Submitting…" : "Export My Data"}
+              </button>
+              <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={() => void handleDeleteAccount()}
+                disabled={deleteSubmitting}
+              >
+                {deleteSubmitting ? "Submitting…" : "Delete My Account"}
+              </button>
             </div>
           </section>
 
