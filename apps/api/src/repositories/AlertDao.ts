@@ -76,6 +76,20 @@ export class AlertDao {
     return this.mapRow(row);
   }
 
+  listUnacknowledged(userId: string): Alert[] {
+    const rows = this.db
+      .prepare(
+        `SELECT id, user_id, category, priority, message, rule_key, entity_id, entity_type,
+                acknowledged, acknowledged_at, created_at
+           FROM alerts
+          WHERE user_id = ? AND acknowledged = 0
+          ORDER BY created_at DESC
+          LIMIT 200`,
+      )
+      .all(userId) as RawRow[];
+    return rows.map((r) => this.mapRow(r));
+  }
+
   findByUser(userId: string, includeAcknowledged = false): Alert[] {
     const sql = includeAcknowledged
       ? `SELECT id, user_id, category, priority, message, rule_key, entity_id, entity_type,
