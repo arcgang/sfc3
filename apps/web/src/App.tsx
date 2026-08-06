@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.js";
+import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout.js";
 import { ConnectedDevicesPage } from "./pages/ConnectedDevicesPage.js";
 import { Footer } from "./components/Footer.js";
 import { Layout } from "./components/Layout.js";
@@ -37,11 +38,13 @@ export function App() {
         <Route path="/partners-services" element={<PartnersServicesPage />} />
         <Route path="/onboarding/devices" element={<Navigate to="/devices/pair" replace />} />
         <Route path="/devices/pair" element={<DevicePairingPage />} />
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/goals" element={<GoalsProgressPage />} />
-          <Route path="/alerts" element={<AlertsPage />} />
-          <Route path="/devices" element={<ConnectedDevicesPage />} />
+        <Route element={<AuthenticatedLayout />}>
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/goals" element={<GoalsProgressPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/devices" element={<ConnectedDevicesPage />} />
+          </Route>
         </Route>
         <Route path="*" element={<Placeholder />} />
       </Routes>
