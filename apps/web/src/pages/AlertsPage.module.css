@@ -163,8 +163,8 @@
 }
 
 .severity-low {
-  background-color: var(--color-blue-100);
-  color: var(--color-blue-800);
+  background-color: var(--color-info-bg);
+  color: var(--color-info-dark);
 }
 
 /* Alert body */

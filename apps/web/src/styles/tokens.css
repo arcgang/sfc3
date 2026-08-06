@@ -80,6 +80,7 @@
   --color-bg-page:        var(--color-gray-50);
   --color-bg-white:       var(--color-white);
   --color-bg-subtle:      var(--color-gray-100);
+  --color-bg-light:       var(--color-gray-100);
   --color-bg-teal:        var(--color-teal-500);
   --color-bg-teal-light:  var(--color-teal-50);
 
