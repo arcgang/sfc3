@@ -42,8 +42,11 @@ type DeviceFixture = {
   deviceType: "smartwatch" | "smart_scale";
   status: string;
   lastSyncAt: string | null;
+  lastSuccessfulSyncAt?: string | null;
   batteryLevel: string | null;
   connectedSince: string;
+  isStale?: boolean;
+  staleAfterHours?: number;
 };
 
 function makeResponse(devices: DeviceFixture[]) {
@@ -496,4 +499,51 @@ test("after a successful disconnect the device card is removed from the list", a
     expect(screen.queryByRole("heading", { name: "Fitbit Charge 5", level: 2 })).toBeNull();
   });
   expect(screen.getByRole("heading", { name: "Withings Body+", level: 2 })).toBeTruthy();
+});
+
+// ── Stale badge: isStale flag drives badge display ────────────────────────────
+
+test("device card shows '⚠ Stale Data' badge when isStale is true", async () => {
+  const staleDevice: DeviceFixture = {
+    id: "device-010",
+    deviceName: "Garmin Vivosmart",
+    provider: "Garmin",
+    deviceType: "smartwatch",
+    status: "connected",
+    lastSyncAt: "2026-01-14T06:00:00.000Z",
+    lastSuccessfulSyncAt: "2026-01-14T06:00:00.000Z",
+    batteryLevel: "45%",
+    connectedSince: "2026-01-01T00:00:00.000Z",
+    isStale: true,
+    staleAfterHours: 18,
+  };
+  mockApiFetch.mockResolvedValueOnce(makeResponse([staleDevice]));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Garmin Vivosmart", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  expect(within(card).getByText("⚠ Stale Data")).toBeTruthy();
+});
+
+test("device card does not show '⚠ Stale Data' badge when isStale is false and status is connected", async () => {
+  const freshDevice: DeviceFixture = {
+    id: "device-011",
+    deviceName: "Garmin Vivosmart",
+    provider: "Garmin",
+    deviceType: "smartwatch",
+    status: "connected",
+    lastSyncAt: "2026-08-06T09:00:00.000Z",
+    lastSuccessfulSyncAt: "2026-08-06T09:00:00.000Z",
+    batteryLevel: "82%",
+    connectedSince: "2026-01-01T00:00:00.000Z",
+    isStale: false,
+    staleAfterHours: 18,
+  };
+  mockApiFetch.mockResolvedValueOnce(makeResponse([freshDevice]));
+  renderPage();
+  const heading = await screen.findByRole("heading", { name: "Garmin Vivosmart", level: 2 });
+  const card = heading.closest("li");
+  if (!card) throw new Error("Expected device card <li> to exist");
+  expect(within(card).queryByText("⚠ Stale Data")).toBeNull();
+  expect(within(card).getByText("✓ Synced")).toBeTruthy();
 });

@@ -42,6 +42,13 @@ interface MockInsight {
   icon: string;
 }
 
+interface MockDeviceStatus {
+  deviceType: string;
+  status: string;
+  lastSyncAt: string | null;
+  stale: boolean;
+}
+
 function makeDashboardResponse(overrides: {
   greeting?: string;
   personaMode?: string;
@@ -60,6 +67,13 @@ function makeDashboardResponse(overrides: {
   };
   insights?: MockInsight[];
   insights_starter_state?: boolean;
+  lastSyncStatus?: {
+    overallLastSyncAt: string | null;
+    isStale: boolean;
+    staleThresholdHours: number;
+    stalenessLabel: string;
+    deviceStatuses: MockDeviceStatus[];
+  };
 } = {}) {
   const defaultCards = [
     { id: "HeartRate", label: "Resting Heart Rate", value: 103, unit: "bpm", badge: "⚠️ Monitor", emptyState: false },
@@ -72,7 +86,7 @@ function makeDashboardResponse(overrides: {
       greeting: overrides.greeting ?? "Good morning, Michael!",
       personaMode: overrides.personaMode ?? "default",
       summaryCards: overrides.cards ?? defaultCards,
-      lastSyncStatus: {
+      lastSyncStatus: overrides.lastSyncStatus ?? {
         overallLastSyncAt: "2026-08-06T10:00:00.000Z",
         isStale: false,
         staleThresholdHours: 18,
@@ -765,4 +779,197 @@ test("Insights section does not add secondary navigation", async () => {
 
   // Only one navigation landmark should be present (the sidebar nav)
   expect(screen.getAllByRole("navigation").length).toBe(1);
+});
+
+// ── Sync header ───────────────────────────────────────────────────────────────
+
+test("sync header shows '✓ Last synced:' when data is fresh", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          lastSyncStatus: {
+            overallLastSyncAt: "2026-08-06T08:00:00.000Z",
+            isStale: false,
+            staleThresholdHours: 18,
+            stalenessLabel: "Up to date",
+            deviceStatuses: [],
+          },
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  expect(screen.getByText(/✓ Last synced:/)).toBeTruthy();
+});
+
+test("sync header shows '↻ Refresh' button", async () => {
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  expect(screen.getByRole("button", { name: "Refresh dashboard" })).toBeTruthy();
+});
+
+test("sync header shows no stale alert when all devices are fresh", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          lastSyncStatus: {
+            overallLastSyncAt: "2026-08-06T09:00:00.000Z",
+            isStale: false,
+            staleThresholdHours: 18,
+            stalenessLabel: "Up to date",
+            deviceStatuses: [
+              { deviceType: "smartwatch", status: "connected", lastSyncAt: "2026-08-06T09:00:00.000Z", stale: false },
+            ],
+          },
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  expect(screen.queryByText(/data last synced/)).toBeNull();
+});
+
+// ── Stale device alert ────────────────────────────────────────────────────────
+
+test("Alerts section shows stale message when one device is stale", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          lastSyncStatus: {
+            overallLastSyncAt: "2026-08-04T16:00:00.000Z",
+            isStale: true,
+            staleThresholdHours: 18,
+            stalenessLabel: "Stale — sync recommended",
+            deviceStatuses: [
+              {
+                deviceType: "smart_scale",
+                status: "connected",
+                lastSyncAt: "2026-08-04T16:00:00.000Z",
+                stale: true,
+              },
+            ],
+          },
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  expect(screen.getByText(/Scale data last synced/)).toBeTruthy();
+  expect(screen.getByText(/Reconnect if no new reading appears today/)).toBeTruthy();
+});
+
+test("Alerts stale message contains the device-type label for a smartwatch", async () => {
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/dashboard")
+      return Promise.resolve(
+        makeDashboardResponse({
+          lastSyncStatus: {
+            overallLastSyncAt: "2026-08-04T12:00:00.000Z",
+            isStale: true,
+            staleThresholdHours: 18,
+            stalenessLabel: "Stale — sync recommended",
+            deviceStatuses: [
+              {
+                deviceType: "smartwatch",
+                status: "connected",
+                lastSyncAt: "2026-08-04T12:00:00.000Z",
+                stale: true,
+              },
+            ],
+          },
+        }),
+      );
+    return Promise.resolve(makeGoalsResponse([]));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+  expect(screen.getByText(/Smartwatch data last synced/)).toBeTruthy();
+});
+
+// ── Re-fetch failure: previous data stays visible ─────────────────────────────
+
+test("after re-fetch failure, the greeting heading remains visible", async () => {
+  let callCount = 0;
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    callCount += 1;
+    if (callCount === 1) return Promise.resolve(makeDashboardResponse());
+    return Promise.reject(new Error("Network error"));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  fireEvent.click(screen.getByRole("button", { name: "Refresh dashboard" }));
+
+  await waitFor(() => {
+    expect(screen.getByText(/Refresh failed/)).toBeTruthy();
+  });
+  expect(screen.getByRole("heading", { name: "Good morning, Michael!", level: 1 })).toBeTruthy();
+});
+
+test("after re-fetch failure, previously stale badge text remains in the Alerts section", async () => {
+  let callCount = 0;
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    callCount += 1;
+    if (callCount === 1)
+      return Promise.resolve(
+        makeDashboardResponse({
+          lastSyncStatus: {
+            overallLastSyncAt: "2026-08-04T16:00:00.000Z",
+            isStale: true,
+            staleThresholdHours: 18,
+            stalenessLabel: "Stale — sync recommended",
+            deviceStatuses: [
+              {
+                deviceType: "smart_scale",
+                status: "connected",
+                lastSyncAt: "2026-08-04T16:00:00.000Z",
+                stale: true,
+              },
+            ],
+          },
+        }),
+      );
+    return Promise.reject(new Error("Network error"));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  // Initial load shows stale alert
+  await screen.findByText(/Scale data last synced/);
+
+  fireEvent.click(screen.getByRole("button", { name: "Refresh dashboard" }));
+
+  await waitFor(() => {
+    expect(screen.getByText(/Refresh failed/)).toBeTruthy();
+  });
+  // Stale alert still visible after re-fetch failure
+  expect(screen.getByText(/Scale data last synced/)).toBeTruthy();
+});
+
+test("after re-fetch failure, metric cards remain visible", async () => {
+  let callCount = 0;
+  mockApiFetch.mockImplementation((path: string) => {
+    if (path === "/goals") return Promise.resolve(makeGoalsResponse([]));
+    callCount += 1;
+    if (callCount === 1) return Promise.resolve(makeDashboardResponse());
+    return Promise.reject(new Error("Network error"));
+  });
+  renderDashboardPage();
+  await screen.findByRole("heading", { name: "Good morning, Michael!", level: 1 });
+
+  fireEvent.click(screen.getByRole("button", { name: "Refresh dashboard" }));
+
+  await waitFor(() => {
+    expect(screen.getByText(/Refresh failed/)).toBeTruthy();
+  });
+  const list = screen.getByRole("list", { name: "Health metrics" });
+  expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
 });
