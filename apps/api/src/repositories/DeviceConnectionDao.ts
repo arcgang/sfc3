@@ -15,6 +15,7 @@ export interface DeviceConnection {
   lastSuccessfulSyncAt: string | null;
   batteryLevel: string | null;
   connectedSince: string;
+  staleAfterHours: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +31,7 @@ interface RawRow {
   last_successful_sync_at: string | null;
   battery_level: string | null;
   connected_since: string;
+  stale_after_hours: number;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +47,7 @@ export class DeviceConnectionDao {
       .prepare(
         `SELECT id, user_id, device_type, device_name, provider, connection_status,
                 last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                COALESCE(stale_after_hours, 18) AS stale_after_hours,
                 created_at, updated_at
            FROM device_connections
           WHERE user_id = ? AND device_type = ?`,
@@ -60,6 +63,7 @@ export class DeviceConnectionDao {
       .prepare(
         `SELECT id, user_id, device_type, device_name, provider, connection_status,
                 last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                COALESCE(stale_after_hours, 18) AS stale_after_hours,
                 created_at, updated_at
            FROM device_connections WHERE id = ?`,
       )
@@ -74,6 +78,7 @@ export class DeviceConnectionDao {
       .prepare(
         `SELECT id, user_id, device_type, device_name, provider, connection_status,
                 last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                COALESCE(stale_after_hours, 18) AS stale_after_hours,
                 created_at, updated_at
            FROM device_connections
           WHERE user_id = ?
@@ -165,6 +170,7 @@ export class DeviceConnectionDao {
       .prepare(
         `SELECT id, user_id, device_type, device_name, provider, connection_status,
                 last_sync_at, last_successful_sync_at, battery_level, connected_since,
+                COALESCE(stale_after_hours, 18) AS stale_after_hours,
                 created_at, updated_at
            FROM device_connections
           ORDER BY created_at ASC`,
@@ -230,6 +236,7 @@ export class DeviceConnectionDao {
       lastSuccessfulSyncAt: row.last_successful_sync_at,
       batteryLevel: row.battery_level,
       connectedSince: row.connected_since,
+      staleAfterHours: row.stale_after_hours,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

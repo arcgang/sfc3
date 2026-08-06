@@ -569,7 +569,12 @@ function toDeviceDto(conn: {
   lastSuccessfulSyncAt: string | null;
   batteryLevel: string | null;
   connectedSince: string;
+  staleAfterHours: number;
 }) {
+  const staleThresholdMs = conn.staleAfterHours * 60 * 60 * 1000;
+  const isStale =
+    conn.lastSuccessfulSyncAt === null ||
+    Date.now() - new Date(conn.lastSuccessfulSyncAt).getTime() > staleThresholdMs;
   return {
     id: conn.id,
     deviceName: conn.deviceName,
@@ -580,6 +585,8 @@ function toDeviceDto(conn: {
     lastSuccessfulSyncAt: conn.lastSuccessfulSyncAt,
     batteryLevel: conn.batteryLevel,
     connectedSince: conn.connectedSince,
+    staleAfterHours: conn.staleAfterHours,
+    isStale,
   };
 }
 

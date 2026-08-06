@@ -237,6 +237,12 @@
   color: #4b5563;
 }
 
+.noAlerts {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
 .detailsLink {
   font-size: 0.8125rem;
   color: var(--color-accent);
