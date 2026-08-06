@@ -218,13 +218,18 @@ function heartRateVariability(userId: string, db: Database.Database, today: Date
 }
 
 function bodyCompositionTrend(userId: string, db: Database.Database, today: Date): InsightObject | null {
-  const thisMonthStart = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const year = today.getUTCFullYear();
+  const month = today.getUTCMonth(); // 0-based
+
+  const thisMonthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const todayStr = toDateStr(today);
 
-  // Previous month start and end
-  const prevMonthDate = new Date(today.getUTCFullYear(), today.getUTCMonth() - 1, 1);
-  const prevMonthStart = `${prevMonthDate.getUTCFullYear()}-${String(prevMonthDate.getUTCMonth() + 1).padStart(2, "0")}-01`;
-  const prevMonthEnd = new Date(today.getUTCFullYear(), today.getUTCMonth(), 0);
+  // Previous month: use UTC Date constructor to avoid local-timezone drift
+  const prevYear = month === 0 ? year - 1 : year;
+  const prevMonth = month === 0 ? 12 : month; // 1-based month number of previous month
+  const prevMonthStart = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
+  // Last day of previous month = day 0 of current month in UTC
+  const prevMonthEnd = new Date(Date.UTC(year, month, 0));
   const prevMonthEndStr = toDateStr(prevMonthEnd);
 
   interface MonthAvgRow { avg_fat: number | null }
