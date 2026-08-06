@@ -31,6 +31,29 @@ export interface DashboardData {
   smartScale: SmartScaleMetrics | null;
 }
 
+// ---------------------------------------------------------------------------
+// Card metrics (names as stored by the sync pipeline)
+// ---------------------------------------------------------------------------
+
+export interface CardMetrics {
+  heartRateBpm: number | null;
+  stepCount: number | null;
+  stepsGoal: number | null;
+  systolicBp: number | null;
+  diastolicBp: number | null;
+  sleepMinutes: number | null;
+  sleepQuality: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// User profile summary
+// ---------------------------------------------------------------------------
+
+export interface UserProfileSummary {
+  fullName: string;
+  personaMode: string;
+}
+
 const STALE_HOURS = 12;
 
 interface DeviceRow {
@@ -42,6 +65,11 @@ interface DeviceRow {
 interface MetricRow {
   metric_name: string;
   value: number;
+}
+
+interface StringMetricRow {
+  metric_name: string;
+  value: string;
 }
 
 export class DashboardDao {
@@ -102,6 +130,45 @@ export class DashboardDao {
     };
   }
 
+  getCardMetrics(userId: string): CardMetrics {
+    // Numeric metrics stored by SyncService for smartwatch
+    const swMetricNames = ["heart_rate_bpm", "step_count", "steps_goal", "sleep_minutes"];
+    const swMap = this.latestMetricValues(userId, "smartwatch", swMetricNames);
+
+    // Numeric metrics from smart_scale (BP if available)
+    const ssMetricNames = ["systolic_bp", "diastolic_bp"];
+    const ssMap = this.latestMetricValues(userId, "smart_scale", ssMetricNames);
+
+    // String metric: sleep_quality (stored as text by future syncs)
+    const sleepQuality = this.latestStringMetricValue(userId, "smartwatch", "sleep_quality");
+
+    return {
+      heartRateBpm: swMap.get("heart_rate_bpm") ?? null,
+      stepCount: swMap.get("step_count") ?? null,
+      stepsGoal: swMap.get("steps_goal") ?? null,
+      systolicBp: ssMap.get("systolic_bp") ?? null,
+      diastolicBp: ssMap.get("diastolic_bp") ?? null,
+      sleepMinutes: swMap.get("sleep_minutes") ?? null,
+      sleepQuality,
+    };
+  }
+
+  getUserProfile(userId: string): UserProfileSummary {
+    const row = this.db
+      .prepare(
+        `SELECT u.full_name, COALESCE(p.persona_mode, 'default') AS persona_mode
+           FROM users u
+           LEFT JOIN profiles p ON p.user_id = u.id
+          WHERE u.id = ?`,
+      )
+      .get(userId) as { full_name: string; persona_mode: string } | undefined;
+
+    return {
+      fullName: row?.full_name ?? "",
+      personaMode: row?.persona_mode ?? "default",
+    };
+  }
+
   private latestMetricValues(
     userId: string,
     sourceType: string,
@@ -132,5 +199,25 @@ export class DashboardDao {
       map.set(row.metric_name, row.value);
     }
     return map;
+  }
+
+  private latestStringMetricValue(
+    userId: string,
+    sourceType: string,
+    metricName: string,
+  ): string | null {
+    const row = this.db
+      .prepare(
+        `SELECT metric_name, value
+           FROM health_records
+          WHERE user_id = ?
+            AND source_type = ?
+            AND metric_name = ?
+          ORDER BY recorded_at DESC
+          LIMIT 1`,
+      )
+      .get(userId, sourceType, metricName) as StringMetricRow | undefined;
+
+    return row ? String(row.value) : null;
   }
 }
