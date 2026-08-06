@@ -571,24 +571,35 @@ export function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
   const [dashLoading, setDashLoading] = useState(true);
   const [dashError, setDashError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const [counts, setCounts] = useState<GoalCounts>({ onTrack: 0, atRisk: 0, missed: 0 });
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [goalsError, setGoalsError] = useState<string | null>(null);
 
   const staleRefreshFired = useRef(false);
+  const hasLoadedOnce = useRef(false);
 
   const fetchDashboard = useCallback((signal?: AbortSignal) => {
-    setDashLoading(true);
-    setDashError(null);
+    const isInitialLoad = !hasLoadedOnce.current;
+    if (isInitialLoad) {
+      setDashLoading(true);
+      setDashError(null);
+    }
+    setRefreshError(null);
     apiFetch<{ data: DashboardPayload }>("/dashboard", signal ? { signal } : {})
       .then((res) => {
+        hasLoadedOnce.current = true;
         setDashboard(res.data);
         setDashLoading(false);
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return;
-        setDashError("Failed to load dashboard data.");
+        if (isInitialLoad) {
+          setDashError("Failed to load dashboard data.");
+        } else {
+          setRefreshError("Refresh failed — showing last known data.");
+        }
         setDashLoading(false);
       });
   }, []);
@@ -676,6 +687,11 @@ export function DashboardPage() {
             ↻ Refresh
           </button>
         </span>
+        {refreshError && (
+          <p role="alert" className={styles.refreshError}>
+            {refreshError}
+          </p>
+        )}
       </div>
 
       <section aria-labelledby="metrics-heading" className={styles.metricsSection}>
