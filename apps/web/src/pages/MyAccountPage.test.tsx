@@ -94,6 +94,13 @@ describe("MyAccountPage — loaded state", () => {
     await screen.findByRole("heading", { name: "My Account", level: 1 });
   });
 
+  it("renders the page subtitle with non-empty text content", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: "My Account", level: 1 });
+    const subtitle = screen.getByText("Manage your profile, preferences, and privacy settings");
+    expect(subtitle.textContent).toBeTruthy();
+  });
+
   it("renders the Profile section heading", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "Profile", level: 2 });
