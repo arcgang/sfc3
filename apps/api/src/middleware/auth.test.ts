@@ -285,6 +285,55 @@ describe("authMiddleware — valid token → request passes through", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 'none' algorithm token → 401 (algorithm pinning)
+// ---------------------------------------------------------------------------
+
+describe("authMiddleware — 'none' algorithm token → 401", () => {
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+
+  it("returns HTTP 401 for a token signed with alg:none", async () => {
+    const app = buildApp();
+    const noneToken = jwt.sign(VALID_PAYLOAD, "", { algorithm: "none" });
+    const res = await supertest(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${noneToken}`);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns error.type AUTH_TOKEN_INVALID for a token signed with alg:none", async () => {
+    const app = buildApp();
+    const noneToken = jwt.sign(VALID_PAYLOAD, "", { algorithm: "none" });
+    const res = await supertest(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${noneToken}`);
+    const body = res.body as ErrorResponse;
+    expect(body.error.type).toBe("AUTH_TOKEN_INVALID");
+  });
+
+  it("emits event=auth.login_attempt with success=false for a token signed with alg:none", async () => {
+    const app = buildApp();
+    const noneToken = jwt.sign(VALID_PAYLOAD, "", { algorithm: "none" });
+    await supertest(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${noneToken}`);
+    const calls = consoleSpy.mock.calls.flat() as Array<Record<string, unknown>>;
+    const log = calls.find(
+      (arg) => typeof arg === "object" && arg["event"] === "auth.login_attempt",
+    );
+    expect(log).toBeDefined();
+    expect(log?.["success"]).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Public routes registered before authMiddleware are exempt from auth
 // ---------------------------------------------------------------------------
 

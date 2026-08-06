@@ -16,7 +16,7 @@ export function authMiddleware(
     const token = authHeader.slice(7);
 
     try {
-      const decoded = jwt.verify(token, jwtSecret);
+      const decoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] });
       res.locals["user"] = decoded;
       if (
         typeof decoded === "object" &&
